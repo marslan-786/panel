@@ -4,6 +4,20 @@ from datetime import datetime
 import json
 import os
 
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    filters,
+)
+
 app = FastAPI()
 
 DATA_FILE = "data/keys.json"
