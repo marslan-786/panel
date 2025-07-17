@@ -89,6 +89,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def generate_random_key(length=12):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    
+DEVICE_OPTIONS = [1, 2, 3, 5, 10, -1]  # -1 = Unlimited
+DURATION_OPTIONS = ["1d", "3d", "7d", "15d", "30d", "1h", "6h"]
 
 def parse_custom_key(text):
     parts = text.strip().split()
