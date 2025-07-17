@@ -97,8 +97,6 @@ async def run_bot():
     await application.initialize()
     await application.start()
     await application.updater.start_polling()
-    # Wait forever so bot doesn't stop
-    await application.updater.idle()
 
 async def run_api():
     config = uvicorn.Config(app=app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
