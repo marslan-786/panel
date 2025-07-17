@@ -13,6 +13,7 @@ from telegram.ext import (
     ContextTypes,
     CommandHandler,
     CallbackQueryHandler,
+    Application,
 )
 import uvicorn
 
@@ -81,18 +82,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "generate_key":
         await query.edit_message_text("🛠 Generating key...\n(Part 2 logic coming next...)")
-    
+
     elif data == "my_keys":
-        # Placeholder until Part 3
         await query.edit_message_text("📂 Showing your keys...\n(Part 3 logic coming next...)")
 
 # ========== RUN BOTH API & BOT ==========
 async def run_bot():
-    BOT_TOKEN = os.environ["BOT_TOKEN"]  # Railway Env var
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    await app.run_polling()
+    BOT_TOKEN = os.environ["BOT_TOKEN"]
+    application: Application = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    # Wait forever so bot doesn't stop
+    await application.updater.idle()
 
 async def run_api():
     config = uvicorn.Config(app=app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
