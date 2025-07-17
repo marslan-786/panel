@@ -99,5 +99,8 @@ async def run_api():
     server = uvicorn.Server(config)
     await server.serve()
 
+async def main():
+    await asyncio.gather(run_bot(), run_api())
+
 if __name__ == "__main__":
-    asyncio.run(asyncio.gather(run_bot(), run_api()))
+    asyncio.run(main())
