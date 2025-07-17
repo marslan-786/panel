@@ -1,14 +1,12 @@
-import hashlib
-from fastapi import FastAPI, Form
-from datetime import datetime
+import asyncio
 import json
 import os
+import random
+import string
+from datetime import datetime, timedelta
 
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+from fastapi import FastAPI
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -16,7 +14,9 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
     filters,
+    Application,
 )
+import uvicorn
 
 app = FastAPI()
 
