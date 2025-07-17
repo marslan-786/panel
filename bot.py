@@ -43,6 +43,8 @@ def save_keys(data):
 
 
 # ======== API Endpoint for Connection ========
+import time  # import time at the top
+
 @app.get("/connect")
 async def connect(key: str, hwid: str):
     global MAINTENANCE
@@ -70,6 +72,7 @@ async def connect(key: str, hwid: str):
             return {
                 "status": "success",
                 "token": f"{key}-{hwid}",
+                "rng": int(time.time()),  # current UNIX timestamp
                 "EXP": info["expiry"]
             }
     return {"status": "error", "message": "Invalid Key"}
