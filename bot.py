@@ -1,36 +1,14 @@
-import asyncio
+import hashlib
+from fastapi import FastAPI, Form
+from datetime import datetime
 import json
-import random
-import string
 import os
-from datetime import datetime, timedelta
-from fastapi import FastAPI
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
-    filters,
-    Application,
-)
-import uvicorn
-
-# ======== CONFIG ========
-DATA_FILE = "data/keys.json"
-MAINTENANCE = False  # اگر true کرنا ہو تو رکھو
-DEVICE_OPTIONS = [1, 2, 3, 10, 100, -1]  # -1 مطلب Unlimited devices
-DURATION_OPTIONS = ["1h", "3h", "5h", "1d", "7d", "30d", "60d"]
 
 app = FastAPI()
 
+DATA_FILE = "data/keys.json"
+SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 
-# ======== Load & Save JSON Data ========
 def load_keys():
     if not os.path.exists(DATA_FILE):
         return {}
@@ -41,41 +19,44 @@ def save_keys(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
+def generate_auth_token(user_key: str, uuid: str, secret_key: str):
+    auth_string = f"PUBG-{user_key}-{uuid}-{secret_key}"
+    md5_hash = hashlib.md5(auth_string.encode()).hexdigest()
+    return md5_hash
 
-# ======== API Endpoint for Connection ========
-import time  # import time at the top
-
-@app.get("/connect")
-async def connect(key: str, hwid: str):
-    global MAINTENANCE
-    if MAINTENANCE:
-        return {"status": "error", "message": "Maintenance Mode"}
-
+@app.post("/connect")
+async def connect(game: str = Form(...), user_key: str = Form(...), serial: str = Form(...)):
     data = load_keys()
-
     for user_id, keys in data.items():
-        if key in keys:
-            info = keys[key]
+        if user_key in keys:
+            info = keys[user_key]
 
             if info.get("blocked", False):
-                return {"status": "error", "message": "Key Blocked"}
+                return {"status": False, "reason": "Key Blocked"}
 
             if datetime.strptime(info["expiry"], "%Y-%m-%d") < datetime.now():
-                return {"status": "error", "message": "Key Expired"}
+                return {"status": False, "reason": "Key Expired"}
 
-            if hwid not in info["devices"]:
+            if serial not in info["devices"]:
                 if len(info["devices"]) >= info["max_devices"]:
-                    return {"status": "error", "message": "Device Limit Reached"}
-                info["devices"].append(hwid)
+                    return {"status": False, "reason": "Device Limit Reached"}
+                info["devices"].append(serial)
                 save_keys(data)
 
+            rng = int(datetime.now().timestamp())
+            token = generate_auth_token(user_key, serial, SECRET_KEY)
+
             return {
-                "status": "success",
-                "token": f"{key}-{hwid}",
-                "rng": int(time.time()),  # current UNIX timestamp
-                "EXP": info["expiry"]
+                "status": True,
+                "data": {
+                    "token": token,
+                    "rng": rng,
+                    "EXP": info["expiry"],
+                    "secret_key": SECRET_KEY  # یہ سیکرٹ کی شامل ہو گئی
+                }
             }
-    return {"status": "error", "message": "Invalid Key"}
+
+    return {"status": False, "reason": "Invalid Key"}
 
 
 # ======== Bot Handlers ========
