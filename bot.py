@@ -32,6 +32,10 @@ app = FastAPI()
 # ─────🗂️ Configs ─────
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
+OWNER_ID = 8003357608  # تمہارا Telegram user ID
+OWNER_USERNAME = "@only_possible"  # تمہارا Telegram username
+ACCESS_FILE = "data/access.json"
+BLOCKED_USERS_FILE = "data/blocked_users.json"
 
 # ─────📂 Helper Functions ─────
 def load_keys():
@@ -54,6 +58,76 @@ def find_key_owner(keys_data, user_key):
         if user_key in keys:
             return user_id, keys[user_key]
     return None, None
+    
+def load_access_keys():
+    if not os.path.exists(ACCESS_FILE):
+        return {}
+    with open(ACCESS_FILE, "r") as f:
+        return json.load(f)
+
+def save_access_keys(data):
+    os.makedirs(os.path.dirname(ACCESS_FILE), exist_ok=True)
+    with open(ACCESS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+        
+def load_blocked_users():
+    if not os.path.exists(BLOCKED_USERS_FILE):
+        return []
+    with open(BLOCKED_USERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_blocked_users(user_ids):
+    os.makedirs(os.path.dirname(BLOCKED_USERS_FILE), exist_ok=True)
+    with open(BLOCKED_USERS_FILE, "w") as f:
+        json.dump(user_ids, f, indent=2)
+        
+def block_user_and_keys(user_id: str):
+    # 1. Block user globally
+    blocked = load_blocked_users()
+    if user_id not in blocked:
+        blocked.append(user_id)
+        save_blocked_users(blocked)
+
+    # 2. Block license keys
+    data = load_keys()
+    if user_id in data:
+        for key in data[user_id]:
+            data[user_id][key]["blocked"] = True
+        save_keys(data)
+
+    # 3. Block access keys
+    access_data = load_access_keys()
+    for key, info in access_data.items():
+        if str(info.get("owner")) == str(user_id):
+            access_data[key]["blocked"] = True
+    save_access_keys(access_data)
+    
+def unblock_user(user_id: str):
+    # Unblock globally
+    blocked = load_blocked_users()
+    if user_id in blocked:
+        blocked.remove(user_id)
+        save_blocked_users(blocked)
+        
+def delete_user_data(user_id: str):
+    # Delete from license keys
+    data = load_keys()
+    if user_id in data:
+        del data[user_id]
+        save_keys(data)
+
+    # Remove access keys owned by user
+    access_data = load_access_keys()
+    to_delete = [k for k, v in access_data.items() if str(v.get("owner")) == str(user_id)]
+    for k in to_delete:
+        del access_data[k]
+    save_access_keys(access_data)
+
+    # Unblock if exists
+    unblock_user(user_id)
+    
+
+        
 # ─────🔌 /connect Endpoint ─────
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
@@ -74,12 +148,33 @@ async def connect(request: Request):
 
     owner_id, key_data = find_key_owner(keys, user_key)
 
-    if not key_data:
+    # اگر key یا owner نہ ملے تو انویلڈ
+    if not key_data or not owner_id:
         return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
 
+    # چیک کریں کہ مالک بلاک ہے یا نہیں
+    # فرض کریں مالک کی بلاک اسٹیٹس keys فائل کے اندر کسی بھی key کے ذریعے نہیں بلکہ آپ کسی الگ طریقے سے مینیج کرتے ہیں
+    # ہم یہاں فرض کر لیتے ہیں کہ مالک بلاک ہے اگر keys میں مالک کے کسی بھی key پر blocked=True ہو (یا آپ الگ فائل استعمال کریں)
+    owner_blocked = False
+    for k, v in keys.get(owner_id, {}).items():
+        if v.get("blocked", False):
+            owner_blocked = True
+            break
+
+    if owner_blocked:
+        # مالک بلاک ہے، تو موجودہ key کو بھی بلاک کر دو اگر نہیں بلاک ہے تو
+        if not key_data.get("blocked", False):
+            key_data["blocked"] = True
+            keys[owner_id][user_key] = key_data
+            save_keys(keys)
+
+        return JSONResponse({"status": False, "reason": "User is blocked"}, status_code=403)
+
+    # اگر key خود بلاک ہے
     if key_data.get("blocked", False):
         return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
 
+    # باقی expiry اور device limit چیک وہی رہیں گے
     expiry_str = key_data.get("expiry", "")
     if expiry_str:
         try:
@@ -102,7 +197,6 @@ async def connect(request: Request):
             return JSONResponse({"status": False, "reason": "Device limit reached"}, status_code=403)
         connected_devices.append(serial)
         key_data["devices"] = connected_devices
-        # save changes under correct user
         keys[owner_id][user_key] = key_data
         save_keys(keys)
 
@@ -121,15 +215,31 @@ async def connect(request: Request):
 # ======== Bot Handlers ========
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    is_owner = user_id == OWNER_ID
+
+    # بٹن بناؤ
     keyboard = [
         [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
-        [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")]
+        [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
+        [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
     ]
+
+    # صرف owner کو access_keys والے بٹن ملیں
+    if is_owner:
+        keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
+        keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
+
     reply_markup = InlineKeyboardMarkup(keyboard)
+
     await update.message.reply_text(
-        "🎉 *Welcome to Impossible Panel!*\n\nUse buttons below to manage your license keys:",
+        f"🎉 *Welcome to Impossible Panel!*\n\n"
+        f"👤 Owner: [@{Only_Possible}](https://t.me/{YOUR_USERNAME})\n"
+        f"🛠 Made by Impossible Devs\n\n"
+        f"👇 Use the buttons below to manage your license keys:",
         reply_markup=reply_markup,
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        disable_web_page_preview=True
     )
 
 def generate_random_key(length=12):
@@ -306,6 +416,89 @@ async def show_key_detail(update: Update, context: ContextTypes.DEFAULT_TYPE, ke
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
+    
+ACCESS_DEVICE_OPTIONS = [1, 2, 3, 5, -1]
+ACCESS_DURATION_OPTIONS = ["1d", "3d", "7d", "15d", "30d"]
+
+async def show_access_key_menu(query, context):
+    context.user_data["access_device_index"] = 0
+    context.user_data["access_duration_index"] = 0
+
+    device_label = ACCESS_DEVICE_OPTIONS[0]
+    duration_label = ACCESS_DURATION_OPTIONS[0]
+
+    keyboard = [
+        [InlineKeyboardButton(f"📱 Devices: {device_label}", callback_data="access_cycle_device")],
+        [InlineKeyboardButton(f"⏱ Duration: {duration_label}", callback_data="access_cycle_duration")],
+        [InlineKeyboardButton("🎲 Generate Access Key", callback_data="generate_access_random")],
+        [InlineKeyboardButton("✏️ Add Custom Access Key", callback_data="add_custom_access")],
+        [InlineKeyboardButton("🔙 Back", callback_data="back_main")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text("🎫 *Access Key Panel:*\n\nConfigure access keys:", reply_markup=reply_markup, parse_mode="Markdown")
+    
+async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    access_data = load_access_keys()
+
+    if not access_data:
+        await query.edit_message_text("📂 You haven't generated any access keys yet.")
+        return
+
+    keyboard = []
+    for key, info in access_data.items():
+        used = len(info.get("devices", []))
+        maxd = info["max_devices"]
+        exp = info["expiry"]
+        blocked = info.get("blocked", False)
+        stat = "🚫" if blocked else "✅"
+        label = f"{stat} {key} | {exp} | {used}/{maxd if maxd != 9999 else '∞'} Devices"
+        keyboard.append([InlineKeyboardButton(label, callback_data=f"viewaccess_{key}")])
+
+    keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="access_keys")])
+    await query.edit_message_text("📂 *Your Access Keys:*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    
+async def block_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Only the owner can use this command!")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /blockuser <user_id>")
+        return
+
+    user_id = context.args[0]
+    block_user_and_keys(user_id)
+    await update.message.reply_text(f"🚫 User `{user_id}` has been blocked and all their keys are now inactive.", parse_mode="Markdown")
+
+
+async def unblock_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Only the owner can use this command!")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /unblockuser <user_id>")
+        return
+
+    user_id = context.args[0]
+    unblock_user(user_id)
+    await update.message.reply_text(f"✅ User `{user_id}` has been unblocked.", parse_mode="Markdown")
+
+
+async def delete_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Only the owner can use this command!")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /deleteuser <user_id>")
+        return
+
+    user_id = context.args[0]
+    delete_user_data(user_id)
+    await update.message.reply_text(f"🗑️ User `{user_id}` and all their data has been deleted.", parse_mode="Markdown")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -345,7 +538,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, key = data.split("_", 1)
         user_id = str(query.from_user.id)
         data_json = load_keys()
-
         if key in data_json.get(user_id, {}):
             current = data_json[user_id][key].get("blocked", False)
             data_json[user_id][key]["blocked"] = not current
@@ -359,7 +551,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, key = data.split("_", 1)
         user_id = str(query.from_user.id)
         data_json = load_keys()
-
         if key in data_json.get(user_id, {}):
             del data_json[user_id][key]
             save_keys(data_json)
@@ -369,17 +560,106 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("❌ Key not found")
 
     elif data == "back_main":
-        # Back to main menu
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
-            [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")]
+            [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
+            [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        if query.from_user.id == OWNER_ID:
+            keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
+            keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
+
         await query.edit_message_text(
             "🎉 *Welcome to Impossible Panel!*\n\nUse buttons below to manage your license keys:",
-            reply_markup=reply_markup,
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
+
+    elif data == "connect_url":
+        connect_url = "https://panel-production-7db6.up.railway.app/connect"
+        await query.edit_message_text(
+            f"🔗 *Your Connect URL:*\n\n`{connect_url}`", parse_mode="Markdown"
+        )
+
+    elif data == "access_keys":
+        if query.from_user.id != OWNER_ID:
+            await query.answer("❌ Only owner can access this!", show_alert=True)
+            return
+        await show_access_key_menu(query, context)
+
+    elif data == "show_my_access_keys":
+        access_data = load_access_keys()
+        if not access_data:
+            await query.edit_message_text("📂 No access keys generated yet.")
+            return
+
+        keyboard = []
+        for key, info in access_data.items():
+            used = len(info.get("devices", []))
+            maxd = info["max_devices"]
+            exp = info["expiry"]
+            blocked = info.get("blocked", False)
+            stat = "🚫" if blocked else "✅"
+            label = f"{stat} {key} | {exp} | {used}/{maxd if maxd != 9999 else '∞'}"
+            keyboard.append([InlineKeyboardButton(label, callback_data=f"viewaccess_{key}")])
+
+        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="access_keys")])
+        await query.edit_message_text(
+            "📂 *Your Access Keys:*",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+
+    elif data.startswith("viewaccess_"):
+        _, key = data.split("_", 1)
+        access_data = load_access_keys()
+        key_data = access_data.get(key)
+        if not key_data:
+            await query.answer("❌ Access key not found!")
+            return
+
+        maxd = key_data["max_devices"]
+        usedd = len(key_data.get("devices", []))
+        exp = key_data["expiry"]
+        blocked = key_data.get("blocked", False)
+        status = "🚫 Blocked" if blocked else "✅ Active"
+
+        keyboard = [
+            [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"access_toggle_{key}")],
+            [InlineKeyboardButton("🗑️ Delete", callback_data=f"access_delete_{key}")],
+            [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
+        ]
+        await query.edit_message_text(
+            f"🎫 *{key}*\n\n📱 *Devices:* {usedd}/{maxd if maxd != 9999 else '∞'}\n⏳ *Expiry:* {exp}\n📌 *Status:* {status}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+
+    elif data.startswith("access_toggle_"):
+        _, key = data.split("_", 1)
+        access_data = load_access_keys()
+        if key in access_data:
+            access_data[key]["blocked"] = not access_data[key].get("blocked", False)
+            save_access_keys(access_data)
+            await query.answer("✅ Status Updated")
+            # Refresh same screen
+            await query.message.delete()
+            await query.message.reply_text("🔄 Refreshing...", reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
+            ]))
+        else:
+            await query.answer("❌ Key not found")
+
+    elif data.startswith("access_delete_"):
+        _, key = data.split("_", 1)
+        access_data = load_access_keys()
+        if key in access_data:
+            del access_data[key]
+            save_access_keys(access_data)
+            await query.answer("🗑️ Deleted")
+            await show_my_access_keys(update, context)
+        else:
+            await query.answer("❌ Not found")
 
 async def run_bot():
     BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -388,6 +668,9 @@ async def run_bot():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_custom_key))
+    application.add_handler(CommandHandler("blockuser", block_user_command))
+    application.add_handler(CommandHandler("unblockuser", unblock_user_command))
+    application.add_handler(CommandHandler("deleteuser", delete_user_command))
 
     await application.initialize()
     await application.start()
