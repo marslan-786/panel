@@ -749,7 +749,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("access_toggle_"):
         try:
-            _, key = data.split("_", 1)
+            key = data.replace("access_toggle_", "", 1)
             access_data = load_access_keys()
             if key in access_data:
                 is_blocked = not access_data[key].get("blocked", False)
@@ -773,7 +773,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("access_delete_"):
         try:
-            _, key = data.split("_", 1)
+            key = data.replace("access_delete_", "", 1)
             access_data = load_access_keys()
             if key in access_data:
                 user_id = str(access_data[key].get("owner"))
