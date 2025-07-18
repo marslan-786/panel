@@ -62,50 +62,23 @@ async def connect(request: Request):
         user_key = request.query_params.get("user_key")
         serial = request.query_params.get("serial")
 
-    # ✅ Validate inputs
+    # ✅ Validate input
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    # ✅ Load and validate key
-    keys = load_keys()
-    key_data = keys.get(user_key)
-    if not key_data:
-        return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
+    # ✅ Generate token same as original
+    token_raw = f"{game}-{user_key}-{serial}"
+    token = hashlib.md5(token_raw.encode()).hexdigest()
 
-    # ✅ Check expiry
-    expiry_str = key_data.get("expiry", "")
-    if expiry_str:
-        try:
-            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
-            if expiry_date < datetime.now():
-                return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
-        except ValueError:
-            return JSONResponse({"status": False, "reason": "Invalid expiry format"}, status_code=500)
-    else:
-        expiry_str = (datetime.now() + timedelta(days=12)).strftime("%Y-%m-%d")
-
-    # ✅ Device check
-    allowed_devices = key_data.get("device_limit", 1)
-    connected_devices = key_data.get("devices", [])
-    if serial not in connected_devices:
-        if len(connected_devices) >= allowed_devices:
-            return JSONResponse({"status": False, "reason": "Device limit reached"}, status_code=403)
-        connected_devices.append(serial)
-        key_data["devices"] = connected_devices
-        save_keys(keys)
-
-    # ✅ Generate Token + RNG
-    token = generate_auth_token(user_key, serial, SECRET_KEY)
+    # ✅ Random large RNG like real API
     rng = random.randint(1000000000, 1999999999)
 
-    # ✅ Success Response (You can comment EXP/secret_key if not needed)
+    # ✅ Return only required fields
     return JSONResponse({
         "status": True,
         "data": {
             "token": token,
-            "rng": rng,
-            "EXP": expiry_str,
-            "secret_key": SECRET_KEY
+            "rng": rng
         }
     })
 
