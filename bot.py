@@ -764,6 +764,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 save_access_keys(access_data)
 
                 user_id = str(access_data[key].get("owner"))
+                key_data = load_keys()
+
+                if user_id in key_data:
+                    for k in key_data[user_id]:
+                        key_data[user_id][k]["blocked"] = is_blocked
+                    save_keys(key_data)
+
                 if is_blocked:
                     block_user_and_keys(user_id)
                 else:
@@ -786,6 +793,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_id = str(access_data[key].get("owner"))
                 del access_data[key]
                 save_access_keys(access_data)
+
+                # Remove all related license keys
+                key_data = load_keys()
+                if user_id in key_data:
+                    del key_data[user_id]
+                    save_keys(key_data)
 
                 remaining = any(str(info.get("owner")) == user_id for info in access_data.values())
                 if not remaining:
