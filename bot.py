@@ -1,12 +1,17 @@
-import asyncio
-import json
+# ─────📦 Built-in Modules ─────
 import os
+import json
 import random
 import string
+import hashlib
 from datetime import datetime, timedelta
+import asyncio
 
+# ─────🌐 FastAPI ─────
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import JSONResponse
-from fastapi import FastAPI, Form, Request
+
+# ─────🤖 Telegram Bot ─────
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -17,9 +22,9 @@ from telegram.ext import (
     filters,
     Application,
 )
-import uvicorn
 
-app = FastAPI()
+# ─────🌀 Uvicorn ─────
+import uvicorn
 
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
@@ -39,9 +44,6 @@ def generate_auth_token(user_key: str, uuid: str, secret_key: str):
     md5_hash = hashlib.md5(auth_string.encode()).hexdigest()
     return md5_hash
 
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import JSONResponse
-
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
     if request.method == "POST":
@@ -50,23 +52,35 @@ async def connect(request: Request):
         user_key = form.get("user_key")
         serial = form.get("serial")
     else:
-        # For GET
         game = request.query_params.get("game")
         user_key = request.query_params.get("user_key")
         serial = request.query_params.get("serial")
 
-    # ✅ اب ان سب کو validate کریں
+    # ✅ validate
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    # ✅ آپ کا پرانا logic یہاں چلے گا – expiry, token, etc.
+    # ✅ Expiry date (today + 12 days for example)
+    exp_date = (datetime.now() + timedelta(days=12)).strftime("%Y-%m-%d")
+
+    # ✅ Generate RNG (6-digit)
+    rng = random.randint(100000, 999999)
+
+    # ✅ Secret key (static for now)
+    secret_key = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
+
+    # ✅ Create token hash (same as C++ client expects)
+    token_raw = f"{game}-{user_key}-{serial}-{secret_key}"
+    token = hashlib.md5(token_raw.encode()).hexdigest()
+
+    # ✅ Final response
     return JSONResponse({
         "status": True,
         "data": {
-            "token": f"{user_key}-{serial}",
-            "rng": 123456,
-            "EXP": "2025-07-30",
-            "secret_key": "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
+            "token": token,
+            "rng": rng,
+            "EXP": exp_date,
+            "secret_key": secret_key
         }
     })
 
