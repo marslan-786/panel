@@ -2,16 +2,15 @@
 import os
 import json
 import random
-import string
 import hashlib
 from datetime import datetime, timedelta
 import asyncio
 
 # ─────🌐 FastAPI ─────
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-# ─────🤖 Telegram Bot ─────
+# ─────🤖 Telegram Bot (Optional, Not Used Yet) ─────
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -26,14 +25,14 @@ from telegram.ext import (
 # ─────🌀 Uvicorn ─────
 import uvicorn
 
-# ─────🚀 FastAPI App Instance ─────
+# ─────🚀 App Instance ─────
 app = FastAPI()
 
-# ─────🗂️ Constants ─────
+# ─────🗂️ Configs ─────
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 
-# ─────📂 File Functions ─────
+# ─────📂 Helper Functions ─────
 def load_keys():
     if not os.path.exists(DATA_FILE):
         return {}
@@ -41,16 +40,15 @@ def load_keys():
         return json.load(f)
 
 def save_keys(data):
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-# ─────🔐 Token Generator ─────
 def generate_auth_token(user_key: str, uuid: str, secret_key: str):
     auth_string = f"PUBG-{user_key}-{uuid}-{secret_key}"
-    md5_hash = hashlib.md5(auth_string.encode()).hexdigest()
-    return md5_hash
+    return hashlib.md5(auth_string.encode()).hexdigest()
 
-# ─────🌐 Main Connect API ─────
+# ─────🔌 /connect Endpoint ─────
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
     if request.method == "POST":
@@ -63,54 +61,56 @@ async def connect(request: Request):
         user_key = request.query_params.get("user_key")
         serial = request.query_params.get("serial")
 
-    # ✅ Validation
+    # ✅ Validate inputs
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    # ✅ Load keys from JSON
+    # ✅ Load and validate key
     keys = load_keys()
-
-    # ✅ Check if key exists
-    if user_key not in keys:
+    key_data = keys.get(user_key)
+    if not key_data:
         return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
 
     # ✅ Check expiry
-    expiry_str = keys[user_key].get("expiry", "")
+    expiry_str = key_data.get("expiry", "")
     if expiry_str:
-        expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
-        if expiry_date < datetime.now():
-            return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
+        try:
+            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+            if expiry_date < datetime.now():
+                return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
+        except ValueError:
+            return JSONResponse({"status": False, "reason": "Invalid expiry format"}, status_code=500)
+    else:
+        expiry_str = (datetime.now() + timedelta(days=12)).strftime("%Y-%m-%d")
 
-    # ✅ Check device limit
-    allowed_devices = keys[user_key].get("device_limit", 1)
-    connected_devices = keys[user_key].get("devices", [])
-
+    # ✅ Device check
+    allowed_devices = key_data.get("device_limit", 1)
+    connected_devices = key_data.get("devices", [])
     if serial not in connected_devices:
         if len(connected_devices) >= allowed_devices:
             return JSONResponse({"status": False, "reason": "Device limit reached"}, status_code=403)
-        else:
-            connected_devices.append(serial)
-            keys[user_key]["devices"] = connected_devices
-            save_keys(keys)
+        connected_devices.append(serial)
+        key_data["devices"] = connected_devices
+        save_keys(keys)
 
-    # ✅ Expiry Date (from key or fallback)
-    exp_date = expiry_str if expiry_str else (datetime.now() + timedelta(days=12)).strftime("%Y-%m-%d")
-
-    # ✅ Token Generation
+    # ✅ Generate Token + RNG
     token = generate_auth_token(user_key, serial, SECRET_KEY)
+    rng = random.randint(1000000000, 1999999999)
 
-    # ✅ RNG
-    rng = random.randint(100000, 999999)
-
+    # ✅ Success Response (You can comment EXP/secret_key if not needed)
     return JSONResponse({
         "status": True,
         "data": {
             "token": token,
             "rng": rng,
-            "EXP": exp_date,
+            "EXP": expiry_str,
             "secret_key": SECRET_KEY
         }
     })
+
+# ─────▶ (Optional) To Run Uvicorn manually:
+# if __name__ == "__main__":
+#     uvicorn.run("your_script:app", host="0.0.0.0", port=8080, reload=True)
 
 
 # ======== Bot Handlers ========
