@@ -215,8 +215,29 @@ async def connect(request: Request):
 # ======== Bot Handlers ========
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    is_owner = user_id == OWNER_ID
+    user_id = str(update.effective_user.id)
+    is_owner = update.effective_user.id == OWNER_ID
+    access_keys = load_access_keys()
+    allowed = False
+
+    if is_owner:
+        allowed = True
+    else:
+        for k, v in access_keys.items():
+            if str(v.get("owner")) == user_id and not v.get("blocked", False):
+                allowed = True
+                break
+
+    if not allowed:
+        username = OWNER_USERNAME or "admin"
+        await update.message.reply_text(
+            f"🔐 *Access Denied!*\n\n"
+            f"🚫 You are not authorized to use this panel.\n"
+            f"🎫 To access, please provide a valid access key.\n"
+            f"🛒 Buy one from: @only_possible",
+            parse_mode="Markdown"
+        )
+        return
 
     # بٹن بناؤ
     keyboard = [
@@ -225,7 +246,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
     ]
 
-    # صرف owner کو access_keys والے بٹن ملیں
     if is_owner:
         keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
         keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
@@ -234,7 +254,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"🎉 *Welcome to Impossible Panel!*\n\n"
-        f"👤 Owner: [@Only_Possible](https://t.me/Only_Possible)\n"
+        f"👤 Owner: [@Only_Possible](https://t.me/Only_possible)\n"
         f"🛠 Made by Impossible Devs\n\n"
         f"👇 Use the buttons below to manage your license keys:",
         reply_markup=reply_markup,
@@ -332,35 +352,6 @@ async def save_key_and_reply(query, context, key):
         f"✅ Key `{key}` created for {device_count if device_count != 9999 else '∞'} device(s), valid till `{expiry}`",
         parse_mode="Markdown"
     )
-
-async def handle_custom_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.user_data.get("awaiting_custom_key"):
-        context.user_data["awaiting_custom_key"] = False
-        parsed = parse_custom_key(update.message.text)
-        if not parsed:
-            await update.message.reply_text(
-                "❌ Invalid format. Use like:\n`MYKEY123 7d 2v` (Key Expiry DeviceCount)",
-                parse_mode="Markdown"
-            )
-            return
-
-        key, devices, expiry = parsed
-        user_id = str(update.effective_user.id)
-        data = load_keys()
-        if user_id not in data:
-            data[user_id] = {}
-
-        data[user_id][key] = {
-            "devices": [],
-            "max_devices": devices,
-            "expiry": expiry,
-            "blocked": False
-        }
-        save_keys(data)
-        await update.message.reply_text(
-            f"✅ Key `{key}` created for {devices if devices != 9999 else '∞'} device(s), valid till `{expiry}`",
-            parse_mode="Markdown"
-        )
 
 async def show_my_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -499,6 +490,133 @@ async def delete_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = context.args[0]
     delete_user_data(user_id)
     await update.message.reply_text(f"🗑️ User `{user_id}` and all their data has been deleted.", parse_mode="Markdown")
+    
+async def save_access_key_and_reply(query, context, key):
+    idx_d = context.user_data.get("access_device_index", 0)
+    idx_t = context.user_data.get("access_duration_index", 0)
+
+    device_count = ACCESS_DEVICE_OPTIONS[idx_d]
+    if device_count == -1:
+        device_count = 9999
+
+    duration = ACCESS_DURATION_OPTIONS[idx_t]
+    if duration.endswith("d"):
+        expiry = (datetime.now() + timedelta(days=int(duration[:-1]))).strftime("%Y-%m-%d")
+    else:
+        expiry = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    access_data = load_access_keys()
+    access_data[key] = {
+        "devices": [],
+        "max_devices": device_count,
+        "expiry": expiry,
+        "blocked": False,
+        "owner": str(query.from_user.id)
+    }
+    save_access_keys(access_data)
+
+    await query.edit_message_text(
+        f"✅ Access Key `{key}` created for {device_count if device_count != 9999 else '∞'} devices, valid till `{expiry}`",
+        parse_mode="Markdown"
+    )
+    
+async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    text = update.message.text.strip()
+
+    # ✅ Custom License Key Handling
+    if context.user_data.get("awaiting_custom_key"):
+        context.user_data["awaiting_custom_key"] = False
+        parsed = parse_custom_key(text)
+        if not parsed:
+            await update.message.reply_text(
+                "❌ Invalid format. Use like:\n`MYKEY123 7d 2v`", parse_mode="Markdown"
+            )
+            return
+
+        key, devices, expiry = parsed
+        data = load_keys()
+        if user_id not in data:
+            data[user_id] = {}
+
+        data[user_id][key] = {
+            "devices": [],
+            "max_devices": devices,
+            "expiry": expiry,
+            "blocked": False
+        }
+        save_keys(data)
+
+        await update.message.reply_text(
+            f"✅ Key `{key}` created for {devices if devices != 9999 else '∞'} device(s), valid till `{expiry}`",
+            parse_mode="Markdown"
+        )
+        return
+
+    # ✅ Custom Access Key Handling
+    if context.user_data.get("awaiting_custom_access_key"):
+        context.user_data["awaiting_custom_access_key"] = False
+        parsed = parse_custom_key(text)
+        if not parsed:
+            await update.message.reply_text(
+                "❌ Invalid format. Use like:\n`ACCESSKEY 7d 2v`", parse_mode="Markdown"
+            )
+            return
+
+        key, devices, expiry = parsed
+        access_data = load_access_keys()
+        access_data[key] = {
+            "devices": [],
+            "max_devices": devices,
+            "expiry": expiry,
+            "blocked": False,
+            "owner": user_id
+        }
+        save_access_keys(access_data)
+
+        await update.message.reply_text(
+            f"✅ Access Key `{key}` created for {devices if devices != 9999 else '∞'} devices, valid till `{expiry}`",
+            parse_mode="Markdown"
+        )
+        return
+
+    # ✅ Access Key Submission / Activation
+    access_data = load_access_keys()
+    key_data = access_data.get(text)
+
+    if not key_data:
+        await update.message.reply_text("❌ Invalid Access Key. Please check and try again.")
+        return
+
+    if key_data.get("blocked", False):
+        await update.message.reply_text("🚫 This Access Key is blocked.")
+        return
+
+    expiry_str = key_data.get("expiry")
+    if expiry_str:
+        try:
+            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+            if expiry_date < datetime.now():
+                await update.message.reply_text("❌ This Access Key has expired.")
+                return
+        except:
+            await update.message.reply_text("❌ Invalid expiry format. Please contact support.")
+            return
+
+    maxd = key_data.get("max_devices", 1)
+    devices = key_data.get("devices", [])
+    if user_id in devices:
+        await update.message.reply_text("✅ You're already registered with this access key!")
+    elif len(devices) >= maxd and maxd != 9999:
+        await update.message.reply_text("⚠️ Device limit reached for this access key.")
+        return
+    else:
+        devices.append(user_id)
+        key_data["devices"] = devices
+        key_data["owner"] = user_id
+        access_data[text] = key_data
+        save_access_keys(access_data)
+        await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -588,27 +706,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_access_key_menu(query, context)
 
     elif data == "show_my_access_keys":
-        access_data = load_access_keys()
-        if not access_data:
-            await query.edit_message_text("📂 No access keys generated yet.")
-            return
-
-        keyboard = []
-        for key, info in access_data.items():
-            used = len(info.get("devices", []))
-            maxd = info["max_devices"]
-            exp = info["expiry"]
-            blocked = info.get("blocked", False)
-            stat = "🚫" if blocked else "✅"
-            label = f"{stat} {key} | {exp} | {used}/{maxd if maxd != 9999 else '∞'}"
-            keyboard.append([InlineKeyboardButton(label, callback_data=f"viewaccess_{key}")])
-
-        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="access_keys")])
-        await query.edit_message_text(
-            "📂 *Your Access Keys:*",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
-        )
+        await show_my_access_keys(update, context)
 
     elif data.startswith("viewaccess_"):
         _, key = data.split("_", 1)
@@ -642,11 +740,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             access_data[key]["blocked"] = not access_data[key].get("blocked", False)
             save_access_keys(access_data)
             await query.answer("✅ Status Updated")
-            # Refresh same screen
-            await query.message.delete()
-            await query.message.reply_text("🔄 Refreshing...", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
-            ]))
+            await show_my_access_keys(update, context)
         else:
             await query.answer("❌ Key not found")
 
@@ -661,13 +755,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.answer("❌ Not found")
 
+    elif data == "access_cycle_device":
+        context.user_data["access_device_index"] = (context.user_data.get("access_device_index", 0) + 1) % len(ACCESS_DEVICE_OPTIONS)
+        await show_access_key_menu(query, context)
+
+    elif data == "access_cycle_duration":
+        context.user_data["access_duration_index"] = (context.user_data.get("access_duration_index", 0) + 1) % len(ACCESS_DURATION_OPTIONS)
+        await show_access_key_menu(query, context)
+
+    elif data == "generate_access_random":
+        key = generate_random_key()
+        await save_access_key_and_reply(query, context, key)
+
+    elif data == "add_custom_access":
+        await query.edit_message_text("✏️ Send your custom access key like:\n`ACCESSKEY 7d 2v`", parse_mode="Markdown")
+        context.user_data["awaiting_custom_access_key"] = True
+
 async def run_bot():
     BOT_TOKEN = os.environ["BOT_TOKEN"]
     application: Application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_custom_key))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_all_messages))
     application.add_handler(CommandHandler("blockuser", block_user_command))
     application.add_handler(CommandHandler("unblockuser", unblock_user_command))
     application.add_handler(CommandHandler("deleteuser", delete_user_command))
