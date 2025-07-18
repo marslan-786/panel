@@ -412,11 +412,16 @@ ACCESS_DEVICE_OPTIONS = [1, 2, 3, 5, -1]
 ACCESS_DURATION_OPTIONS = ["1d", "3d", "7d", "15d", "30d"]
 
 async def show_access_key_menu(query, context):
-    context.user_data["access_device_index"] = 0
-    context.user_data["access_duration_index"] = 0
+    # اگر index موجود نہیں تو default 0 رکھو
+    device_index = context.user_data.get("access_device_index", 0)
+    duration_index = context.user_data.get("access_duration_index", 0)
 
-    device_label = ACCESS_DEVICE_OPTIONS[0]
-    duration_label = ACCESS_DURATION_OPTIONS[0]
+    # label دکھانے کے لیے value نکالو
+    device_label = ACCESS_DEVICE_OPTIONS[device_index]
+    duration_label = ACCESS_DURATION_OPTIONS[duration_index]
+
+    # اگر device -1 ہو تو ∞ دکھاؤ
+    device_label = "∞" if device_label == -1 else device_label
 
     keyboard = [
         [InlineKeyboardButton(f"📱 Devices: {device_label}", callback_data="access_cycle_device")],
@@ -427,7 +432,11 @@ async def show_access_key_menu(query, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text("🎫 *Access Key Panel:*\n\nConfigure access keys:", reply_markup=reply_markup, parse_mode="Markdown")
+    await query.edit_message_text(
+        "🎫 *Access Key Panel:*\n\nConfigure access keys:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
     
 async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -740,7 +749,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             access_data[key]["blocked"] = not access_data[key].get("blocked", False)
             save_access_keys(access_data)
             await query.answer("✅ Status Updated")
-            await show_my_access_keys(update, context)
+            await show_key_detail_access(query, context, key)
         else:
             await query.answer("❌ Key not found")
 
