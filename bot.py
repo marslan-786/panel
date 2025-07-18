@@ -236,13 +236,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # میسج اور کی بورڈ تیار کریں
     if is_owner or allowed:
         text = (
-            "🎉 *Welcome to Impossible Panel!*\n\n"
-            "👇 Use the buttons below:"
+            
+                 "🎉 *Welcome to Impossible Panel!*😍\n\n"
+                  "✨ *You are a Premium Member!* 🥰\n"
+                  "🟢 Your membership is *Successfully activated* ✅.\n\n"
+                  "👑 *Owner:* [@Only_Possible](https://t.me/Only_Possible)\n\n"
+                  "💡 To use the panel features, simply click the buttons below 👇"
+)
         )
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
+            [InlineKeyboardButton("👑 Owner", url="https://t.me/Only_Possible")]
         ]
         if is_owner:
             keyboard.extend([
