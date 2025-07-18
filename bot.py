@@ -58,7 +58,7 @@ def find_key_owner(keys_data, user_key):
         if user_key in keys:
             return user_id, keys[user_key]
     return None, None
-    
+
 def load_access_keys():
     if not os.path.exists(ACCESS_FILE):
         return {}
@@ -69,7 +69,7 @@ def save_access_keys(data):
     os.makedirs(os.path.dirname(ACCESS_FILE), exist_ok=True)
     with open(ACCESS_FILE, "w") as f:
         json.dump(data, f, indent=2)
-        
+
 def load_blocked_users():
     if not os.path.exists(BLOCKED_USERS_FILE):
         return []
@@ -80,8 +80,9 @@ def save_blocked_users(user_ids):
     os.makedirs(os.path.dirname(BLOCKED_USERS_FILE), exist_ok=True)
     with open(BLOCKED_USERS_FILE, "w") as f:
         json.dump(user_ids, f, indent=2)
-        
-def block_user_and_keys(user_id: str):
+
+def block_user_and_keys(user_id):
+    user_id = str(user_id)  # ensure string
     # 1. Block user globally
     blocked = load_blocked_users()
     if user_id not in blocked:
@@ -98,18 +99,19 @@ def block_user_and_keys(user_id: str):
     # 3. Block access keys
     access_data = load_access_keys()
     for key, info in access_data.items():
-        if str(info.get("owner")) == str(user_id):
+        if str(info.get("owner")) == user_id:
             access_data[key]["blocked"] = True
     save_access_keys(access_data)
-    
-def unblock_user(user_id: str):
-    # Unblock globally
+
+def unblock_user(user_id):
+    user_id = str(user_id)  # ensure string
     blocked = load_blocked_users()
     if user_id in blocked:
         blocked.remove(user_id)
         save_blocked_users(blocked)
-        
-def delete_user_data(user_id: str):
+
+def delete_user_data(user_id):
+    user_id = str(user_id)  # ensure string
     # Delete from license keys
     data = load_keys()
     if user_id in data:
@@ -118,7 +120,7 @@ def delete_user_data(user_id: str):
 
     # Remove access keys owned by user
     access_data = load_access_keys()
-    to_delete = [k for k, v in access_data.items() if str(v.get("owner")) == str(user_id)]
+    to_delete = [k for k, v in access_data.items() if str(v.get("owner")) == user_id]
     for k in to_delete:
         del access_data[k]
     save_access_keys(access_data)
@@ -438,6 +440,30 @@ async def show_access_key_menu(query, context):
         parse_mode="Markdown"
     )
     
+async def show_access_key_detail(query, context, key):
+    access_data = load_access_keys()
+    key_data = access_data.get(key)
+    if not key_data:
+        await query.answer("❌ Access key not found!")
+        return
+
+    maxd = key_data["max_devices"]
+    usedd = len(key_data.get("devices", []))
+    exp = key_data["expiry"]
+    blocked = key_data.get("blocked", False)
+    status = "🚫 Blocked" if blocked else "✅ Active"
+
+    keyboard = [
+        [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"access_toggle_{key}")],
+        [InlineKeyboardButton("🗑️ Delete", callback_data=f"access_delete_{key}")],
+        [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
+    ]
+    await query.edit_message_text(
+        f"🎫 *{key}*\n\n📱 *Devices:* {usedd}/{maxd if maxd != 9999 else '∞'}\n⏳ *Expiry:* {exp}\n📌 *Status:* {status}",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+    
 async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     access_data = load_access_keys()
@@ -622,7 +648,6 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         devices.append(user_id)
         key_data["devices"] = devices
-        key_data["owner"] = user_id
         access_data[text] = key_data
         save_access_keys(access_data)
         await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
@@ -719,37 +744,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("viewaccess_"):
         _, key = data.split("_", 1)
-        access_data = load_access_keys()
-        key_data = access_data.get(key)
-        if not key_data:
-            await query.answer("❌ Access key not found!")
-            return
-
-        maxd = key_data["max_devices"]
-        usedd = len(key_data.get("devices", []))
-        exp = key_data["expiry"]
-        blocked = key_data.get("blocked", False)
-        status = "🚫 Blocked" if blocked else "✅ Active"
-
-        keyboard = [
-            [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"access_toggle_{key}")],
-            [InlineKeyboardButton("🗑️ Delete", callback_data=f"access_delete_{key}")],
-            [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
-        ]
-        await query.edit_message_text(
-            f"🎫 *{key}*\n\n📱 *Devices:* {usedd}/{maxd if maxd != 9999 else '∞'}\n⏳ *Expiry:* {exp}\n📌 *Status:* {status}",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
-        )
+        await show_access_key_detail(query, context, key)
 
     elif data.startswith("access_toggle_"):
         _, key = data.split("_", 1)
         access_data = load_access_keys()
         if key in access_data:
-            access_data[key]["blocked"] = not access_data[key].get("blocked", False)
+            is_blocked = not access_data[key].get("blocked", False)
+            access_data[key]["blocked"] = is_blocked
             save_access_keys(access_data)
+
+            # Block or unblock user globally
+            user_id = str(access_data[key].get("owner"))
+            if is_blocked:
+                block_user_and_keys(user_id)
+            else:
+                unblock_user(user_id)
+
             await query.answer("✅ Status Updated")
-            await show_key_detail_access(query, context, key)
+            await show_access_key_detail(query, context, key)
         else:
             await query.answer("❌ Key not found")
 
@@ -757,19 +770,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, key = data.split("_", 1)
         access_data = load_access_keys()
         if key in access_data:
+            user_id = str(access_data[key].get("owner"))
             del access_data[key]
             save_access_keys(access_data)
+
+            # Unblock if no other access keys left
+            remaining = any(str(info.get("owner")) == user_id for info in access_data.values())
+            if not remaining:
+                unblock_user(user_id)
+
             await query.answer("🗑️ Deleted")
             await show_my_access_keys(update, context)
         else:
             await query.answer("❌ Not found")
 
     elif data == "access_cycle_device":
-        context.user_data["access_device_index"] = (context.user_data.get("access_device_index", 0) + 1) % len(ACCESS_DEVICE_OPTIONS)
+        user_data["access_device_index"] = (user_data.get("access_device_index", 0) + 1) % len(ACCESS_DEVICE_OPTIONS)
         await show_access_key_menu(query, context)
 
     elif data == "access_cycle_duration":
-        context.user_data["access_duration_index"] = (context.user_data.get("access_duration_index", 0) + 1) % len(ACCESS_DURATION_OPTIONS)
+        user_data["access_duration_index"] = (user_data.get("access_duration_index", 0) + 1) % len(ACCESS_DURATION_OPTIONS)
         await show_access_key_menu(query, context)
 
     elif data == "generate_access_random":
@@ -778,7 +798,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "add_custom_access":
         await query.edit_message_text("✏️ Send your custom access key like:\n`ACCESSKEY 7d 2v`", parse_mode="Markdown")
-        context.user_data["awaiting_custom_access_key"] = True
+        user_data["awaiting_custom_access_key"] = True
 
 async def run_bot():
     BOT_TOKEN = os.environ["BOT_TOKEN"]
