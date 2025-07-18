@@ -373,7 +373,7 @@ async def save_key_and_reply(query, context, key):
     save_keys(data)
 
     await query.edit_message_text(
-        f"✅ Key `{key}` created for {device_count if device_count != 9999 else '∞'} device(s), valid till `{expiry}`",
+        f"✅ Key `{key}` created for {device_count if device_count != 9999 else '∞'} device(s), valid till `{expiry}` Please Again /start",
         parse_mode="Markdown"
     )
 
@@ -581,7 +581,7 @@ async def save_access_key_and_reply(query, context, key):
     save_access_keys(access_data)
 
     await query.edit_message_text(
-        f"✅ Access Key `{key}` created for {device_count if device_count != 9999 else '∞'} devices, valid till `{expiry}`",
+        f"✅ Access Key `{key}` created for {device_count if device_count != 9999 else '∞'} devices, valid till `{expiry}` Please Again /start",
         parse_mode="Markdown"
     )
     
@@ -615,7 +615,7 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
                 return  # ✅ Success case: stop further processing
             except:
                 await update.message.reply_text(
-                    "❌ Invalid input. Send number of days like: `5`",
+                    "⚠️ Please Again /start",
                     parse_mode="Markdown"
                 )
                 return  # ❌ Error case: stop further processing
@@ -648,7 +648,7 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         save_keys(data)
 
         await update.message.reply_text(
-            f"✅ Key `{key}` created for {devices if devices != 9999 else '∞'} device(s), valid till `{expiry}`",
+            f"✅ Key `{key}` created for {devices if devices != 9999 else '∞'} device(s), valid till `{expiry}` Please Again /start",
             parse_mode="Markdown"
         )
         return
@@ -676,7 +676,7 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         save_access_keys(access_data)
 
         await update.message.reply_text(
-            f"✅ Access Key `{key}` created for {devices if devices != 9999 else '∞'} devices, valid till `{expiry}`",
+            f"✅ Access Key `{key}` created for {devices if devices != 9999 else '∞'} devices, valid till `{expiry}` Please Again /start",
             parse_mode="Markdown"
         )
         return
