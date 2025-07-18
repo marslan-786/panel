@@ -232,17 +232,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 break
 
     if not allowed:
-        username = OWNER_USERNAME or "admin"
-        await update.message.reply_text(
+        # Message destination depends on message or callback
+        text = (
             f"🔐 *Access Denied!*\n\n"
             f"🚫 You are not authorized to use this panel.\n"
             f"🎫 To access, please provide a valid access key.\n"
-            f"🛒 Buy one from: @only_possible",
-            parse_mode="Markdown"
+            f"🛒 Buy one from: @{OWNER_USERNAME or 'only_possible'}"
         )
+
+        if update.message:
+            await update.message.reply_text(text, parse_mode="Markdown")
+        elif update.callback_query:
+            await update.callback_query.message.reply_text(text, parse_mode="Markdown")
+
         return
 
-    # بٹن بناؤ
+    # ✅ Show panel menu to owner or authorized user
     keyboard = [
         [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
         [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
@@ -257,7 +262,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"🎉 *Welcome to Impossible Panel!*\n\n"
-        f"👤 Owner: [@Only_Possible](https://t.me/Only_possible)\n"
+        f"👤 Owner: [@{OWNER_USERNAME or 'only_possible'}](https://t.me/{OWNER_USERNAME or 'only_possible'})\n"
         f"🛠 Made by Impossible Devs\n\n"
         f"👇 Use the buttons below to manage your license keys:",
         reply_markup=reply_markup,
