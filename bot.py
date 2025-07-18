@@ -26,6 +26,8 @@ from telegram.ext import (
 # ─────🌀 Uvicorn ─────
 import uvicorn
 
+app = FastAPI()
+
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 
