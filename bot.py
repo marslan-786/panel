@@ -420,6 +420,8 @@ async def show_key_detail(update: Update, context: ContextTypes.DEFAULT_TYPE, ke
     device_text = f"{used_d}/{max_d if max_d != 9999 else '∞'} Devices"
 
     keyboard = [
+        [InlineKeyboardButton("➕ Add Time", callback_data=f"addtime_{key}"),
+         InlineKeyboardButton("🔄 Reset Devices", callback_data=f"resetdev_{key}")],
         [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"toggle_{key}")],
         [InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_{key}")],
         [InlineKeyboardButton("🔙 Back", callback_data="my_keys")]
@@ -584,12 +586,38 @@ async def save_access_key_and_reply(query, context, key):
     )
     
 async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data = context.user_data
     user_id = str(update.effective_user.id)
     text = update.message.text.strip()
 
+    # ✅ Add Time to Key
+    if user_data.get("awaiting_add_time_key"):
+        key = user_data.pop("awaiting_add_time_key")
+        keys = load_keys()
+
+        if key in keys.get(user_id, {}):
+            try:
+                days_to_add = int(text)
+                current_expiry = keys[user_id][key].get("expiry")
+                if current_expiry:
+                    expiry = datetime.strptime(current_expiry, "%Y-%m-%d")
+                    new_expiry = expiry + timedelta(days=days_to_add)
+                else:
+                    new_expiry = datetime.now() + timedelta(days=days_to_add)
+
+                keys[user_id][key]["expiry"] = new_expiry.strftime("%Y-%m-%d")
+                save_keys(keys)
+                await update.message.reply_text(f"✅ Added {days_to_add} days to key `{key}`", parse_mode="Markdown")
+                await show_key_detail(update, context, key)
+            except:
+                await update.message.reply_text("❌ Invalid input. Send number of days like: `5`", parse_mode="Markdown")
+        else:
+            await update.message.reply_text("❌ Key not found.")
+        return
+
     # ✅ Custom License Key Handling
-    if context.user_data.get("awaiting_custom_key"):
-        context.user_data["awaiting_custom_key"] = False
+    if user_data.get("awaiting_custom_key"):
+        user_data["awaiting_custom_key"] = False
         parsed = parse_custom_key(text)
         if not parsed:
             await update.message.reply_text(
@@ -617,8 +645,8 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     # ✅ Custom Access Key Handling
-    if context.user_data.get("awaiting_custom_access_key"):
-        context.user_data["awaiting_custom_access_key"] = False
+    if user_data.get("awaiting_custom_access_key"):
+        user_data["awaiting_custom_access_key"] = False
         parsed = parse_custom_key(text)
         if not parsed:
             await update.message.reply_text(
@@ -740,6 +768,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.answer("❌ Key not found")
 
+    elif data.startswith("addtime_"):
+        _, key = data.split("_", 1)
+        context.user_data["awaiting_add_time_key"] = key
+        await query.edit_message_text("🕒 Send number of days to add (e.g. `5`):", parse_mode="Markdown")
+
+    elif data.startswith("resetdev_"):
+        _, key = data.split("_", 1)
+        user_id = str(query.from_user.id)
+        keys = load_keys()
+        if key in keys.get(user_id, {}):
+            keys[user_id][key]["devices"] = []
+            save_keys(keys)
+            await query.answer("✅ Devices reset!")
+            await show_key_detail(update, context, key)
+        else:
+            await query.answer("❌ Key not found")
+
     elif data == "back_main":
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
@@ -777,20 +822,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("access_toggle_"):
         try:
-            key = data[len("access_toggle_"):]  # صرف key نکالیں
+            key = data[len("access_toggle_"):]
             access_data = load_access_keys()
-    
             if key not in access_data:
                 await query.answer("❌ Key not found")
                 return
-        
+
             current_status = access_data[key].get("blocked", False)
             access_data[key]["blocked"] = not current_status
-
             user_id = str(access_data[key].get("owner"))
 
             if not current_status:
-               block_user_and_keys(user_id)
+                block_user_and_keys(user_id)
             else:
                 unblock_user(user_id)
 
@@ -812,7 +855,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 del access_data[key]
                 save_access_keys(access_data)
 
-                # Remove all related license keys
                 key_data = load_keys()
                 if user_id in key_data:
                     del key_data[user_id]
