@@ -5,6 +5,7 @@ import random
 import string
 from datetime import datetime, timedelta
 
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Form
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -38,8 +39,19 @@ def generate_auth_token(user_key: str, uuid: str, secret_key: str):
     md5_hash = hashlib.md5(auth_string.encode()).hexdigest()
     return md5_hash
 
-@app.post("/connect")
-async def connect(game: str = Form(...), user_key: str = Form(...), serial: str = Form(...)):
+@app.api_route("/connect", methods=["GET", "POST"])
+async def connect(request: Request, game: str = Form(None), user_key: str = Form(None), serial: str = Form(None)):
+    # اگر POST فارم ڈیٹا نہیں آیا تو GET query سے اٹھاؤ
+    if request.method == "GET":
+        game = request.query_params.get("game")
+        user_key = request.query_params.get("user_key")
+        serial = request.query_params.get("serial")
+
+    # ضروری فیلڈز چیک کرو
+    if not game or not user_key or not serial:
+        return JSONResponse(status_code=400, content={"status": False, "reason": "Missing parameters"})
+
+    # چابی ڈیٹا لوڈ کرو
     data = load_keys()
     for user_id, keys in data.items():
         if user_key in keys:
@@ -66,7 +78,7 @@ async def connect(game: str = Form(...), user_key: str = Form(...), serial: str 
                     "token": token,
                     "rng": rng,
                     "EXP": info["expiry"],
-                    "secret_key": SECRET_KEY  # یہ سیکرٹ کی شامل ہو گئی
+                    "secret_key": SECRET_KEY
                 }
             }
 
