@@ -223,7 +223,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
 
-    allowed = False
+    allowed = True
     for v in access_keys.values():
         if str(v.get("owner")) == user_id and not v.get("blocked", False):
             allowed = True
