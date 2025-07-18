@@ -779,37 +779,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             key = data[len("access_toggle_"):]  # صرف key نکالیں
             access_data = load_access_keys()
-        
+    
             if key not in access_data:
                 await query.answer("❌ Key not found")
                 return
-            
-            # موجودہ حالت کو الٹیں
+        
             current_status = access_data[key].get("blocked", False)
             access_data[key]["blocked"] = not current_status
-        
-            # متعلقہ یوزر کی تمام کیز اپڈیٹ کریں
+
             user_id = str(access_data[key].get("owner"))
-            keys_data = load_keys()
-        
-            if user_id in keys_data:
-                for k in keys_data[user_id]:
-                    keys_data[user_id][k]["blocked"] = not current_status
-                save_keys(keys_data)
-        
-            # گلوبل بلاک/آن بلاک
+
             if not current_status:
-                block_user_and_keys(user_id)
+               block_user_and_keys(user_id)
             else:
                 unblock_user(user_id)
-            
+
             save_access_keys(access_data)
             await query.answer("✅ Status Updated")
             await show_access_key_detail(query, context, key)
-        
+
         except Exception as e:
             await query.answer("❌ Error occurred!")
-            print(f"Error in access_toggle: {e}")
+            print(f"⚠️ Error in access_toggle_: {e}")
             traceback.print_exc()
 
     elif data.startswith("access_delete_"):
