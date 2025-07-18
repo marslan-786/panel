@@ -33,7 +33,7 @@ app = FastAPI()
 # ─────🗂️ Configs ─────
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
-OWNER_ID = 8003357608  # تمہارا Telegram user ID
+OWNER_ID = "8003357608"  # تمہارا Telegram user ID
 OWNER_USERNAME = "@only_possible"  # تمہارا Telegram username
 ACCESS_FILE = "data/access.json"
 BLOCKED_USERS_FILE = "data/blocked_users.json"
@@ -222,68 +222,64 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
 
-    allowed = False
-    for v in access_keys.values():
-        if str(v.get("owner")) == user_id and not v.get("blocked", False):
-            allowed = True
-            break
+    # ڈیبگ: access_keys چیک کریں
+    print("Access Keys Data:", access_keys)
 
-    # Debug logs
+    allowed = any(
+        str(v.get("owner")) == user_id and not v.get("blocked", False)
+        for v in access_keys.values()
+    )
+
+    # ڈیبگ: permissions چیک کریں
     print(f"User {user_id} | is_owner: {is_owner} | allowed: {allowed}")
 
-    # --- Prepare reply markup and text ---
-    keyboard = []
-    text = ""
-
+    # میسج اور کی بورڈ تیار کریں
     if is_owner or allowed:
-        # 🎉 Full Panel for authorized users
+        text = (
+            "🎉 *Welcome to Impossible Panel!*\n\n"
+            "👇 Use the buttons below:"
+        )
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
         ]
         if is_owner:
-            keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
-            keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
-
-        text = (
-            f"🎉 *Welcome to Impossible Panel!*\n\n"
-            f"👤 Owner: [@Only_Possible](https://t.me/Only_Possible)\n"
-            f"🛠 Made by Impossible Devs\n\n"
-            f"👇 Use the buttons below to manage your license keys:"
-        )
+            keyboard.extend([
+                [InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")],
+                [InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")]
+            ])
     else:
-        # 🚫 Access Denied for unauthorized users
         text = (
-            f"🔐 *Welcome to Impossible Panel!*\n\n"
-            f"🚫 You are not authorized yet.\n"
-            f"🎫 To get access, please buy an access key.\n"
-            f"🛒 Contact: @Only_Possible"
+            "🔐 *Welcome to Impossible Panel!*\n\n"
+            "🚫 You are not authorized yet.\n"
+            "🎫 To get access, buy a key from @Only_Possible"
         )
         keyboard = [
-            [InlineKeyboardButton("🛒 Buy Access Key", url=f"https://t.me/Only_Possible")]
+            [InlineKeyboardButton("🛒 Buy Access Key", url="https://t.me/Only_Possible")]
         ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    # میسج بھیجیں (پہلے update.message پر کوشش کریں، ورنہ context.bot سے)
     try:
-        # Always reply to the original message (works for both /start and button clicks)
-        await update.message.reply_text(
-            text,
-            reply_markup=reply_markup,
-            parse_mode="Markdown",
-            disable_web_page_preview=True
-        )
+        if update.message:
+            await update.message.reply_text(
+                text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown",
+                disable_web_page_preview=True
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=user.id,
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown",
+                disable_web_page_preview=True
+            )
     except Exception as e:
-        print(f"⚠️ Error sending message to user {user_id}: {e}")
-        # Fallback: Try sending via context
-        await context.bot.send_message(
-            chat_id=user.id,
-            text=text,
-            reply_markup=reply_markup,
-            parse_mode="Markdown",
-            disable_web_page_preview=True
-        )
+        print(f"Failed to send message to {user_id}: {e}")
 
 def generate_random_key(length=12):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
