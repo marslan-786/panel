@@ -782,7 +782,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     unblock_user(user_id)
 
                 await query.answer("✅ Status Updated")
-                await show_access_key_detail(query, context, key)
+                await show_my_access_keys(update, context)
             else:
                 await query.answer("❌ Key not found")
         except Exception as e:
