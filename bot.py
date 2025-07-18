@@ -607,13 +607,21 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
 
                 keys[user_id][key]["expiry"] = new_expiry.strftime("%Y-%m-%d")
                 save_keys(keys)
-                await update.message.reply_text(f"✅ Added {days_to_add} days to key `{key}`", parse_mode="Markdown")
+                await update.message.reply_text(
+                    f"✅ Added {days_to_add} days to key `{key}`",
+                    parse_mode="Markdown"
+                )
                 await show_key_detail(update, context, key)
+                return  # ✅ Success case: stop further processing
             except:
-                await update.message.reply_text("❌ Invalid input. Send number of days like: `5`", parse_mode="Markdown")
+                await update.message.reply_text(
+                    "❌ Invalid input. Send number of days like: `5`",
+                    parse_mode="Markdown"
+                )
+                return  # ❌ Error case: stop further processing
         else:
             await update.message.reply_text("❌ Key not found.")
-        return
+            return
 
     # ✅ Custom License Key Handling
     if user_data.get("awaiting_custom_key"):
@@ -621,7 +629,8 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         parsed = parse_custom_key(text)
         if not parsed:
             await update.message.reply_text(
-                "❌ Invalid format. Use like:\n`MYKEY123 7d 2v`", parse_mode="Markdown"
+                "❌ Invalid format. Use like:\n`MYKEY123 7d 2v`",
+                parse_mode="Markdown"
             )
             return
 
@@ -650,7 +659,8 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         parsed = parse_custom_key(text)
         if not parsed:
             await update.message.reply_text(
-                "❌ Invalid format. Use like:\n`ACCESSKEY 7d 2v`", parse_mode="Markdown"
+                "❌ Invalid format. Use like:\n`ACCESSKEY 7d 2v`",
+                parse_mode="Markdown"
             )
             return
 
@@ -698,6 +708,7 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
     devices = key_data.get("devices", [])
     if user_id in devices:
         await update.message.reply_text("✅ You're already registered with this access key!")
+        return
     elif len(devices) >= maxd and maxd != 9999:
         await update.message.reply_text("⚠️ Device limit reached for this access key.")
         return
@@ -708,6 +719,7 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         access_data[text] = key_data
         save_access_keys(access_data)
         await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
+        return
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
