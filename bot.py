@@ -219,7 +219,7 @@ async def connect(request: Request):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
-    is_owner = user.id == OWNER_ID
+    is_owner = user.id == str(OWNER_ID)
     access_keys = load_access_keys()
 
     # ڈیبگ: access_keys چیک کریں
