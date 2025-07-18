@@ -218,21 +218,22 @@ async def connect(request: Request):
 # ======== Bot Handlers ========
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    is_owner = update.effective_user.id == OWNER_ID
+    user = update.effective_user
+    user_id = str(user.id)
+    is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
     allowed = False
 
     if is_owner:
         allowed = True
     else:
-        for k, v in access_keys.items():
+        for v in access_keys.values():
             if str(v.get("owner")) == user_id and not v.get("blocked", False):
                 allowed = True
                 break
 
+    # --- Message Content ---
     if not allowed:
-        # Message destination depends on message or callback
         text = (
             f"🔐 *Access Denied!*\n\n"
             f"🚫 You are not authorized to use this panel.\n"
@@ -240,14 +241,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🛒 Buy one from: @{OWNER_USERNAME or 'only_possible'}"
         )
 
+        # ✅ Safe reply handling
         if update.message:
             await update.message.reply_text(text, parse_mode="Markdown")
         elif update.callback_query:
             await update.callback_query.message.reply_text(text, parse_mode="Markdown")
+        else:
+            await context.bot.send_message(chat_id=user.id, text=text, parse_mode="Markdown")
 
         return
 
-    # ✅ Show panel menu to owner or authorized user
+    # --- Show Panel Menu ---
     keyboard = [
         [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
         [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
@@ -260,15 +264,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
+    text = (
         f"🎉 *Welcome to Impossible Panel!*\n\n"
         f"👤 Owner: [@{OWNER_USERNAME or 'only_possible'}](https://t.me/{OWNER_USERNAME or 'only_possible'})\n"
         f"🛠 Made by Impossible Devs\n\n"
-        f"👇 Use the buttons below to manage your license keys:",
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-        disable_web_page_preview=True
+        f"👇 Use the buttons below to manage your license keys:"
     )
+
+    if update.message:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
+    else:
+        await context.bot.send_message(chat_id=user.id, text=text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
 
 def generate_random_key(length=12):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
