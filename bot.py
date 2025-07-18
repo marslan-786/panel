@@ -242,7 +242,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                   "🟢 Your membership is *Successfully activated* ✅.\n\n"
                   "👑 *Owner:* [@Only_Possible](https://t.me/Only_Possible)\n\n"
                   "💡 To use the panel features, simply click the buttons below 👇"
-)
         )
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
@@ -778,33 +777,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("access_toggle_"):
         try:
-            key = data.replace("access_toggle_", "", 1)
+            key = data[len("access_toggle_"):]  # صرف key نکالیں
             access_data = load_access_keys()
-            if key in access_data:
-                is_blocked = not access_data[key].get("blocked", False)
-                access_data[key]["blocked"] = is_blocked
-                save_access_keys(access_data)
-
-                user_id = str(access_data[key].get("owner"))
-                key_data = load_keys()
-
-                if user_id in key_data:
-                    for k in key_data[user_id]:
-                        key_data[user_id][k]["blocked"] = is_blocked
-                    save_keys(key_data)
-
-                if is_blocked:
-                    block_user_and_keys(user_id)
-                else:
-                    unblock_user(user_id)
-
-                await query.answer("✅ Status Updated")
-                await show_my_access_keys(update, context)
-            else:
+        
+            if key not in access_data:
                 await query.answer("❌ Key not found")
+                return
+            
+            # موجودہ حالت کو الٹیں
+            current_status = access_data[key].get("blocked", False)
+            access_data[key]["blocked"] = not current_status
+        
+            # متعلقہ یوزر کی تمام کیز اپڈیٹ کریں
+            user_id = str(access_data[key].get("owner"))
+            keys_data = load_keys()
+        
+            if user_id in keys_data:
+                for k in keys_data[user_id]:
+                    keys_data[user_id][k]["blocked"] = not current_status
+                save_keys(keys_data)
+        
+            # گلوبل بلاک/آن بلاک
+            if not current_status:
+                block_user_and_keys(user_id)
+            else:
+                unblock_user(user_id)
+            
+            save_access_keys(access_data)
+            await query.answer("✅ Status Updated")
+            await show_access_key_detail(query, context, key)
+        
         except Exception as e:
             await query.answer("❌ Error occurred!")
-            print("⚠️ Error in access_toggle_:")
+            print(f"Error in access_toggle: {e}")
             traceback.print_exc()
 
     elif data.startswith("access_delete_"):
