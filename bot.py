@@ -222,61 +222,69 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(user.id)
     is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
+
     allowed = False
+    for v in access_keys.values():
+        if str(v.get("owner")) == user_id and not v.get("blocked", False):
+            allowed = True
+            break
 
-    if is_owner:
-        allowed = True
-    else:
-        for v in access_keys.values():
-            if str(v.get("owner")) == user_id and not v.get("blocked", False):
-                allowed = True
-                break
+    # --- Prepare reply markup based on permission ---
+    keyboard = []
+    text = ""
 
-    # --- Message Content ---
-    if not allowed:
+    if is_owner or allowed:
+        # 🎉 Show Full Panel
+        keyboard = [
+            [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
+            [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
+            [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
+        ]
+
+        if is_owner:
+            keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
+            keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
+
         text = (
-            f"🔐 *Access Denied!*\n\n"
-            f"🚫 You are not authorized to use this panel.\n"
-            f"🎫 To access, please provide a valid access key.\n"
-            f"🛒 Buy one from: @{OWNER_USERNAME or 'only_possible'}"
+            f"🎉 *Welcome to Impossible Panel!*\n\n"
+            f"👤 Owner: [@Only_Possible}](https://t.me/Only_Possible)\n"
+            f"🛠 Made by Impossible Devs\n\n"
+            f"👇 Use the buttons below to manage your license keys:"
         )
-
-        # ✅ Safe reply handling
-        if update.message:
-            await update.message.reply_text(text, parse_mode="Markdown")
-        elif update.callback_query:
-            await update.callback_query.message.reply_text(text, parse_mode="Markdown")
-        else:
-            await context.bot.send_message(chat_id=user.id, text=text, parse_mode="Markdown")
-
-        return
-
-    # --- Show Panel Menu ---
-    keyboard = [
-        [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
-        [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
-        [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
-    ]
-
-    if is_owner:
-        keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
-        keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
+    else:
+        # 🚫 Access Denied — But reply with instructions
+        text = (
+            f"🔐 *Welcome to Impossible Panel!*\n\n"
+            f"🚫 You are not authorized yet.\n"
+            f"🎫 To get access, please buy an access key.\n"
+            f"🛒 Contact: @Only_Possible"
+        )
+        keyboard = [
+            [InlineKeyboardButton("🛒 Buy Access Key", url=f"https://t.me/Only_Possible")]
+        ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    text = (
-        f"🎉 *Welcome to Impossible Panel!*\n\n"
-        f"👤 Owner: [@{OWNER_USERNAME or 'only_possible'}](https://t.me/{OWNER_USERNAME or 'only_possible'})\n"
-        f"🛠 Made by Impossible Devs\n\n"
-        f"👇 Use the buttons below to manage your license keys:"
-    )
-
-    if update.message:
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
-    elif update.callback_query:
-        await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
-    else:
-        await context.bot.send_message(chat_id=user.id, text=text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True)
+    # ✅ Always send message (safe check)
+    try:
+        if update.message:
+            await update.message.reply_text(
+                text, reply_markup=reply_markup,
+                parse_mode="Markdown", disable_web_page_preview=True
+            )
+        elif update.callback_query:
+            await update.callback_query.message.reply_text(
+                text, reply_markup=reply_markup,
+                parse_mode="Markdown", disable_web_page_preview=True
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=user.id, text=text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown", disable_web_page_preview=True
+            )
+    except Exception as e:
+        print(f"⚠️ Error sending welcome/start message to user {user_id}: {e}")
 
 def generate_random_key(length=12):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
