@@ -216,31 +216,32 @@ async def connect(request: Request):
 
 
 # ======== Bot Handlers ========
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
 
-    allowed = True
+    allowed = False
     for v in access_keys.values():
         if str(v.get("owner")) == user_id and not v.get("blocked", False):
             allowed = True
             break
 
-    # --- Prepare reply markup based on permission ---
+    # Debug logs
+    print(f"User {user_id} | is_owner: {is_owner} | allowed: {allowed}")
+
+    # --- Prepare reply markup and text ---
     keyboard = []
     text = ""
 
     if is_owner or allowed:
-        # 🎉 Show Full Panel
+        # 🎉 Full Panel for authorized users
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
         ]
-
         if is_owner:
             keyboard.append([InlineKeyboardButton("🎫 Access Keys", callback_data="access_keys")])
             keyboard.append([InlineKeyboardButton("📂 Show My Access Keys", callback_data="show_my_access_keys")])
@@ -252,7 +253,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👇 Use the buttons below to manage your license keys:"
         )
     else:
-        # 🚫 Access Denied — But reply with instructions
+        # 🚫 Access Denied for unauthorized users
         text = (
             f"🔐 *Welcome to Impossible Panel!*\n\n"
             f"🚫 You are not authorized yet.\n"
@@ -265,26 +266,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # ✅ Always send message (safe check)
     try:
-        if update.message:
-            await update.message.reply_text(
-                text, reply_markup=reply_markup,
-                parse_mode="Markdown", disable_web_page_preview=True
-            )
-        elif update.callback_query:
-            await update.callback_query.message.reply_text(
-                text, reply_markup=reply_markup,
-                parse_mode="Markdown", disable_web_page_preview=True
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=user.id, text=text,
-                reply_markup=reply_markup,
-                parse_mode="Markdown", disable_web_page_preview=True
-            )
+        # Always reply to the original message (works for both /start and button clicks)
+        await update.message.reply_text(
+            text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
     except Exception as e:
-        print(f"⚠️ Error sending welcome/start message to user {user_id}: {e}")
+        print(f"⚠️ Error sending message to user {user_id}: {e}")
+        # Fallback: Try sending via context
+        await context.bot.send_message(
+            chat_id=user.id,
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
 
 def generate_random_key(length=12):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
