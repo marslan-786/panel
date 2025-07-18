@@ -442,28 +442,34 @@ async def show_access_key_menu(query, context):
     )
     
 async def show_access_key_detail(query, context, key):
-    access_data = load_access_keys()
-    key_data = access_data.get(key)
-    if not key_data:
-        await query.answer("❌ Access key not found!")
-        return
+    try:
+        access_data = load_access_keys()
+        key_data = access_data.get(key)
+        if not key_data:
+            await query.answer("❌ Access key not found!")
+            return
 
-    maxd = key_data["max_devices"]
-    usedd = len(key_data.get("devices", []))
-    exp = key_data["expiry"]
-    blocked = key_data.get("blocked", False)
-    status = "🚫 Blocked" if blocked else "✅ Active"
+        maxd = key_data.get("max_devices", 0)
+        usedd = len(key_data.get("devices", []))
+        exp = key_data.get("expiry", "N/A")
+        blocked = key_data.get("blocked", False)
+        status = "🚫 Blocked" if blocked else "✅ Active"
 
-    keyboard = [
-        [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"access_toggle_{key}")],
-        [InlineKeyboardButton("🗑️ Delete", callback_data=f"access_delete_{key}")],
-        [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
-    ]
-    await query.edit_message_text(
-        f"🎫 *{key}*\n\n📱 *Devices:* {usedd}/{maxd if maxd != 9999 else '∞'}\n⏳ *Expiry:* {exp}\n📌 *Status:* {status}",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+        keyboard = [
+            [InlineKeyboardButton("🚫 Unblock" if blocked else "🛑 Block", callback_data=f"access_toggle_{key}")],
+            [InlineKeyboardButton("🗑️ Delete", callback_data=f"access_delete_{key}")],
+            [InlineKeyboardButton("🔙 Back", callback_data="show_my_access_keys")]
+        ]
+
+        await query.edit_message_text(
+            f"🎫 *{key}*\n\n📱 *Devices:* {usedd}/{maxd if maxd != 9999 else '∞'}\n⏳ *Expiry:* {exp}\n📌 *Status:* {status}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        print("⚠️ Error in show_access_key_detail():")
+        traceback.print_exc()
+        await query.answer("❌ Error displaying details!")
     
 async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
