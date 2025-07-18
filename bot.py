@@ -5,6 +5,7 @@ import random
 import hashlib
 from datetime import datetime, timedelta
 import asyncio
+import string
 
 # ─────🌐 FastAPI ─────
 from fastapi import FastAPI, Request
