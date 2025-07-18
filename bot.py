@@ -246,7 +246,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
-            [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")]
+            [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")],
             [InlineKeyboardButton("👑 Owner", url="https://t.me/Only_Possible")]
         ]
         if is_owner:
