@@ -3,6 +3,7 @@ import os
 import json
 import random
 import hashlib
+import traceback
 from datetime import datetime, timedelta
 import asyncio
 import string
@@ -747,42 +748,50 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_access_key_detail(query, context, key)
 
     elif data.startswith("access_toggle_"):
-        _, key = data.split("_", 1)
-        access_data = load_access_keys()
-        if key in access_data:
-            is_blocked = not access_data[key].get("blocked", False)
-            access_data[key]["blocked"] = is_blocked
-            save_access_keys(access_data)
+        try:
+            _, key = data.split("_", 1)
+            access_data = load_access_keys()
+            if key in access_data:
+                is_blocked = not access_data[key].get("blocked", False)
+                access_data[key]["blocked"] = is_blocked
+                save_access_keys(access_data)
 
-            # Block or unblock user globally
-            user_id = str(access_data[key].get("owner"))
-            if is_blocked:
-                block_user_and_keys(user_id)
+                user_id = str(access_data[key].get("owner"))
+                if is_blocked:
+                    block_user_and_keys(user_id)
+                else:
+                    unblock_user(user_id)
+
+                await query.answer("✅ Status Updated")
+                await show_access_key_detail(query, context, key)
             else:
-                unblock_user(user_id)
-
-            await query.answer("✅ Status Updated")
-            await show_access_key_detail(query, context, key)
-        else:
-            await query.answer("❌ Key not found")
+                await query.answer("❌ Key not found")
+        except Exception as e:
+            await query.answer("❌ Error occurred!")
+            print("⚠️ Error in access_toggle_:")
+            traceback.print_exc()
 
     elif data.startswith("access_delete_"):
-        _, key = data.split("_", 1)
-        access_data = load_access_keys()
-        if key in access_data:
-            user_id = str(access_data[key].get("owner"))
-            del access_data[key]
-            save_access_keys(access_data)
+        try:
+            _, key = data.split("_", 1)
+            access_data = load_access_keys()
+            if key in access_data:
+                user_id = str(access_data[key].get("owner"))
+                del access_data[key]
+                save_access_keys(access_data)
 
-            # Unblock if no other access keys left
-            remaining = any(str(info.get("owner")) == user_id for info in access_data.values())
-            if not remaining:
-                unblock_user(user_id)
+                remaining = any(str(info.get("owner")) == user_id for info in access_data.values())
+                if not remaining:
+                    unblock_user(user_id)
 
-            await query.answer("🗑️ Deleted")
-            await show_my_access_keys(update, context)
-        else:
-            await query.answer("❌ Not found")
+                await query.answer("🗑️ Deleted")
+                await show_my_access_keys(update, context)
+            else:
+                await query.answer("❌ Not found")
+        except Exception as e:
+            await query.answer("❌ Error occurred!")
+            print("⚠️ Error in access_delete_:")
+            traceback.print_exc()
 
     elif data == "access_cycle_device":
         user_data["access_device_index"] = (user_data.get("access_device_index", 0) + 1) % len(ACCESS_DEVICE_OPTIONS)
