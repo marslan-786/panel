@@ -49,6 +49,11 @@ def generate_auth_token(user_key: str, uuid: str, secret_key: str):
     auth_string = f"PUBG-{user_key}-{uuid}-{secret_key}"
     return hashlib.md5(auth_string.encode()).hexdigest()
 
+def find_key_owner(keys_data, user_key):
+    for user_id, keys in keys_data.items():
+        if user_key in keys:
+            return user_id, keys[user_key]
+    return None, None
 # ─────🔌 /connect Endpoint ─────
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
@@ -62,18 +67,48 @@ async def connect(request: Request):
         user_key = request.query_params.get("user_key")
         serial = request.query_params.get("serial")
 
-    # ✅ Validate input
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    # ✅ Generate token same as original
-    token_raw = f"{game}-{user_key}-{serial}"
-    token = hashlib.md5(token_raw.encode()).hexdigest()
+    keys = load_keys()
 
-    # ✅ Random large RNG like real API
+    owner_id, key_data = find_key_owner(keys, user_key)
+
+    if not key_data:
+        return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
+
+    if key_data.get("blocked", False):
+        return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
+
+    expiry_str = key_data.get("expiry", "")
+    if expiry_str:
+        try:
+            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+            if expiry_date < datetime.now():
+                return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
+        except Exception:
+            return JSONResponse({"status": False, "reason": "Invalid expiry format"}, status_code=500)
+    else:
+        expiry_date = datetime.now() + timedelta(days=12)
+        key_data["expiry"] = expiry_date.strftime("%Y-%m-%d")
+        save_keys(keys)
+
+    allowed_devices = key_data.get("max_devices", 1)
+    connected_devices = key_data.get("devices", [])
+
+    if serial not in connected_devices:
+        max_dev = 9999 if allowed_devices in [-1, 9999] else allowed_devices
+        if len(connected_devices) >= max_dev:
+            return JSONResponse({"status": False, "reason": "Device limit reached"}, status_code=403)
+        connected_devices.append(serial)
+        key_data["devices"] = connected_devices
+        # save changes under correct user
+        keys[owner_id][user_key] = key_data
+        save_keys(keys)
+
+    token = generate_auth_token(user_key, serial, SECRET_KEY)
     rng = random.randint(1000000000, 1999999999)
 
-    # ✅ Return only required fields
     return JSONResponse({
         "status": True,
         "data": {
@@ -81,10 +116,6 @@ async def connect(request: Request):
             "rng": rng
         }
     })
-
-# ─────▶ (Optional) To Run Uvicorn manually:
-# if __name__ == "__main__":
-#     uvicorn.run("your_script:app", host="0.0.0.0", port=8080, reload=True)
 
 
 # ======== Bot Handlers ========
