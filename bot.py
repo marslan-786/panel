@@ -33,7 +33,7 @@ app = FastAPI()
 # ─────🗂️ Configs ─────
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
-OWNER_ID = "8003357608"  # تمہارا Telegram user ID
+OWNER_ID = 8003357608  # تمہارا Telegram user ID
 OWNER_USERNAME = "@only_possible"  # تمہارا Telegram username
 ACCESS_FILE = "data/access.json"
 BLOCKED_USERS_FILE = "data/blocked_users.json"
@@ -219,7 +219,7 @@ async def connect(request: Request):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
-    is_owner = user.id == str(OWNER_ID)
+    is_owner = user.id == OWNER_ID
     access_keys = load_access_keys()
 
     # ڈیبگ: access_keys چیک کریں
