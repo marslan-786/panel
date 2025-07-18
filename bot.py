@@ -234,7 +234,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"🎉 *Welcome to Impossible Panel!*\n\n"
-        f"👤 Owner: [@{Only_Possible}](https://t.me/{YOUR_USERNAME})\n"
+        f"👤 Owner: [@Only_Possible](https://t.me/Only_Possible)\n"
         f"🛠 Made by Impossible Devs\n\n"
         f"👇 Use the buttons below to manage your license keys:",
         reply_markup=reply_markup,
