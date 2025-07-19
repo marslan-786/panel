@@ -156,17 +156,36 @@ async def connect(request: Request):
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    keys = load_keys()
+    # ─── Check if device is globally blocked ───
+    if os.path.exists(BLOCKED_USERS_FILE):
+        with open(BLOCKED_USERS_FILE, "r") as f:
+            try:
+                blocked_users = json.load(f)
+            except Exception:
+                blocked_users = []
 
+        # Support both dict and list formats
+        if isinstance(blocked_users, dict):
+            is_blocked = serial in blocked_users
+        elif isinstance(blocked_users, list):
+            is_blocked = serial in blocked_users
+        else:
+            is_blocked = False
+
+        if is_blocked:
+            return JSONResponse({
+                "status": False,
+                "reason": "Your admin is blocked by the panel owner. Please contact your admin."
+            }, status_code=403)
+
+    # ─── Load and validate key ───
+    keys = load_keys()
     owner_id, key_data = find_key_owner(keys, user_key)
 
-    # اگر key یا owner نہ ملے تو انویلڈ
     if not key_data or not owner_id:
         return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
 
-    # چیک کریں کہ مالک بلاک ہے یا نہیں
-    # فرض کریں مالک کی بلاک اسٹیٹس keys فائل کے اندر کسی بھی key کے ذریعے نہیں بلکہ آپ کسی الگ طریقے سے مینیج کرتے ہیں
-    # ہم یہاں فرض کر لیتے ہیں کہ مالک بلاک ہے اگر keys میں مالک کے کسی بھی key پر blocked=True ہو (یا آپ الگ فائل استعمال کریں)
+    # ─── Check if key's owner is blocked ───
     owner_blocked = False
     for k, v in keys.get(owner_id, {}).items():
         if v.get("blocked", False):
@@ -174,7 +193,6 @@ async def connect(request: Request):
             break
 
     if owner_blocked:
-        # مالک بلاک ہے، تو موجودہ key کو بھی بلاک کر دو اگر نہیں بلاک ہے تو
         if not key_data.get("blocked", False):
             key_data["blocked"] = True
             keys[owner_id][user_key] = key_data
@@ -182,24 +200,36 @@ async def connect(request: Request):
 
         return JSONResponse({"status": False, "reason": "User is blocked"}, status_code=403)
 
-    # اگر key خود بلاک ہے
+    # ─── If key itself is blocked ───
     if key_data.get("blocked", False):
         return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
 
-    # باقی expiry اور device limit چیک وہی رہیں گے
+    # ─── Check key expiry ───
     expiry_str = key_data.get("expiry", "")
     if expiry_str:
-        try:
-            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d")
-            if expiry_date < datetime.now():
-                return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
-        except Exception:
+        expiry_date = None
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                expiry_date = datetime.strptime(expiry_str, fmt)
+                break
+            except ValueError:
+                continue
+
+        if expiry_date is None:
             return JSONResponse({"status": False, "reason": "Invalid expiry format"}, status_code=500)
+
+        if expiry_date < datetime.now():
+            return JSONResponse({"status": False, "reason": "Key has expired"}, status_code=403)
     else:
+        # No expiry? Assign default +12 days with time 23:59:59
         expiry_date = datetime.now() + timedelta(days=12)
-        key_data["expiry"] = expiry_date.strftime("%Y-%m-%d")
+        expiry_date = expiry_date.replace(hour=23, minute=59, second=59, microsecond=0)
+        expiry_str = expiry_date.strftime("%Y-%m-%d %H:%M:%S")
+        key_data["expiry"] = expiry_str
+        keys[owner_id][user_key] = key_data
         save_keys(keys)
 
+    # ─── Device limit check ───
     allowed_devices = key_data.get("max_devices", 1)
     connected_devices = key_data.get("devices", [])
 
@@ -212,6 +242,7 @@ async def connect(request: Request):
         keys[owner_id][user_key] = key_data
         save_keys(keys)
 
+    # ─── Generate token ───
     token = generate_auth_token(user_key, serial, SECRET_KEY)
     rng = random.randint(1000000000, 1999999999)
 
@@ -219,7 +250,8 @@ async def connect(request: Request):
         "status": True,
         "data": {
             "token": token,
-            "rng": rng
+            "rng": rng,
+            "EXP": expiry_str  # Expiry date and time sent to client
         }
     })
 
@@ -373,12 +405,18 @@ async def save_key_and_reply(query, context, key):
         device_count = 9999  # Unlimited devices
 
     duration = DURATION_OPTIONS[idx_t]
+    now = datetime.now()
+
+    # 🕒 Calculate expiry datetime
     if duration.endswith("h"):
         hours = int(duration[:-1])
-        expiry = (datetime.now() + timedelta(hours=hours)).strftime("%Y-%m-%d")
+        expiry_dt = now + timedelta(hours=hours)
     else:
         days = int(duration[:-1])
-        expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+        expiry_dt = now + timedelta(days=days)
+        expiry_dt = expiry_dt.replace(hour=23, minute=59, second=59, microsecond=0)  # 🔥 midnight expiry
+
+    expiry = expiry_dt.strftime("%Y-%m-%d %H:%M:%S")
 
     user_id = str(query.from_user.id)
     data = load_keys()
