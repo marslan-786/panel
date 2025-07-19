@@ -1,1 +1,12 @@
-{}
+{
+  "8167904992": {
+    "A03CKBGLYXM0": {
+      "devices": [
+        "d7099a06-22cc-3773-afd3-515c349eb12e"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-07-20 23:59:59",
+      "blocked": false
+    }
+  }
+}
