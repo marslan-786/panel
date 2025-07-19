@@ -139,8 +139,24 @@ def unblock_user_by_id(user_id: str):
     return True
     
 
-        
-# ─────🔌 /connect Endpoint ─────
+def load_access():
+    if os.path.exists(ACCESS_FILE):
+        try:
+            with open(ACCESS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def load_blocked_users():
+    if os.path.exists(BLOCKED_USERS_FILE):
+        try:
+            with open(BLOCKED_USERS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
     if request.method == "POST":
@@ -156,55 +172,48 @@ async def connect(request: Request):
     if not all([game, user_key, serial]):
         return JSONResponse({"status": False, "reason": "Missing Parameters"}, status_code=400)
 
-    # ─── Check if device is globally blocked ───
-    if os.path.exists(BLOCKED_USERS_FILE):
-        with open(BLOCKED_USERS_FILE, "r") as f:
-            try:
-                blocked_users = json.load(f)
-            except Exception:
-                blocked_users = []
-
-        # Support both dict and list formats
-        if isinstance(blocked_users, dict):
-            is_blocked = serial in blocked_users
-        elif isinstance(blocked_users, list):
-            is_blocked = serial in blocked_users
-        else:
-            is_blocked = False
-
-        if is_blocked:
-            return JSONResponse({
-                "status": False,
-                "reason": "Your admin is blocked by the panel owner. Please contact your admin."
-            }, status_code=403)
-
-    # ─── Load and validate key ───
+    # Load keys and find owner
     keys = load_keys()
     owner_id, key_data = find_key_owner(keys, user_key)
 
     if not key_data or not owner_id:
         return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
 
-    # ─── Check if key's owner is blocked ───
-    owner_blocked = False
-    for k, v in keys.get(owner_id, {}).items():
-        if v.get("blocked", False):
-            owner_blocked = True
-            break
+    # اگر owner خود OWNER_ID ہے تو bypass کریں تمام چیکز
+    if owner_id != OWNER_ID:
+        # Load access and blocked users
+        access_data = load_access()
+        blocked_users = load_blocked_users()
 
-    if owner_blocked:
-        if not key_data.get("blocked", False):
-            key_data["blocked"] = True
-            keys[owner_id][user_key] = key_data
-            save_keys(keys)
+        # Check if device is blocked globally
+        if serial in blocked_users:
+            return JSONResponse({
+                "status": False,
+                "reason": "Your admin is blocked by the panel owner. Please contact your admin."
+            }, status_code=403)
 
-        return JSONResponse({"status": False, "reason": "User is blocked"}, status_code=403)
+        # Check if owner is allowed
+        if str(owner_id) not in access_data:
+            return JSONResponse({"status": False, "reason": "Access denied. Invalid user."}, status_code=403)
 
-    # ─── If key itself is blocked ───
-    if key_data.get("blocked", False):
-        return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
+        # Check if owner is blocked by any blocked key
+        owner_blocked = any(
+            v.get("blocked", False)
+            for v in keys.get(owner_id, {}).values()
+        )
+        if owner_blocked:
+            if not key_data.get("blocked", False):
+                key_data["blocked"] = True
+                keys[owner_id][user_key] = key_data
+                save_keys(keys)
 
-    # ─── Check key expiry ───
+            return JSONResponse({"status": False, "reason": "User is blocked"}, status_code=403)
+
+        # Check if key itself is blocked
+        if key_data.get("blocked", False):
+            return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
+
+    # Check expiry
     expiry_str = key_data.get("expiry", "")
     if expiry_str:
         expiry_date = None
@@ -229,7 +238,7 @@ async def connect(request: Request):
         keys[owner_id][user_key] = key_data
         save_keys(keys)
 
-    # ─── Device limit check ───
+    # Device limit check
     allowed_devices = key_data.get("max_devices", 1)
     connected_devices = key_data.get("devices", [])
 
@@ -242,7 +251,7 @@ async def connect(request: Request):
         keys[owner_id][user_key] = key_data
         save_keys(keys)
 
-    # ─── Generate token ───
+    # Generate token
     token = generate_auth_token(user_key, serial, SECRET_KEY)
     rng = random.randint(1000000000, 1999999999)
 
@@ -251,7 +260,7 @@ async def connect(request: Request):
         "data": {
             "token": token,
             "rng": rng,
-            "EXP": expiry_str  # Expiry date and time sent to client
+            "EXP": expiry_str
         }
     })
 
