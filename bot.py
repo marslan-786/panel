@@ -983,7 +983,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "connect_url":
-        connect_url = "https://panel-production-7db6.up.railway.app/connect"
+        connect_url = "https://panel-production-fd16.up.railway.app/connect"
         await query.edit_message_text(
             f"🔗 *Your Connect URL:*\n\n`{connect_url}`", parse_mode="Markdown"
         )
