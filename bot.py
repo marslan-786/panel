@@ -271,7 +271,7 @@ async def connect(request: Request):
             "EXP": expiry_str
         }
     })
-
+    
 
 # ======== Bot Handlers ========
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -867,6 +867,49 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         save_access_keys(access_data)
         await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
         return
+        
+
+async def send(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+
+    # access.json لوڈ کریں
+    try:
+        with open(ACCESS_FILE, "r") as f:
+            access_data = json.load(f)
+    except Exception as e:
+        await update.message.reply_text("❌ Failed to load access.json")
+        return
+
+    # چیک کریں کہ user کسی entry کا owner ہے
+    allowed = False
+    target_devices = []
+
+    for entry in access_data.values():
+        if entry.get("owner") == user_id:
+            allowed = True
+            target_devices.extend(entry.get("devices", []))
+
+    if not allowed:
+        await update.message.reply_text("⛔️ You are not authorized to use /send.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("⚠️ Please provide a message to send.\nUsage: /send Hello Everyone!")
+        return
+
+    message = " ".join(context.args)
+    success = 0
+    failed = 0
+
+    for uid in set(target_devices):  # Remove duplicates
+        try:
+            await context.bot.send_message(chat_id=int(uid), text=message)
+            success += 1
+        except Exception as e:
+            failed += 1
+            print(f"Failed to send to {uid}: {e}")
+
+    await update.message.reply_text(f"✅ Message sent to {success} users.\n❌ Failed: {failed}")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -983,9 +1026,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "connect_url":
-        connect_url = "https://panel-production-fd16.up.railway.app/"
+        connect_url = "https://panel.impossible-world.xyz/connect"
         await query.edit_message_text(
-            f"🔗 *Your Connect URL:*\n\n`{connect_url}`\n\n*Premium Domain Connect URL Shifting To Another Hosting Please Today Use This 👇*", parse_mode="Markdown"
+            f"🔗 *Your Connect URL:*\n\n`{connect_url}`", parse_mode="Markdown"
         )
 
     elif data == "access_keys":
@@ -1088,6 +1131,7 @@ async def run_bot():
     application.add_handler(CommandHandler("unblockuser", unblock_user_command))
     application.add_handler(CommandHandler("deleteuser", delete_user_command))
     application.add_handler(CallbackQueryHandler(backup_data_handler, pattern="^backup_data$"))
+    application.add_handler(CommandHandler("send", send))
     
 
     await application.initialize()
@@ -1104,3 +1148,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    
