@@ -983,9 +983,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "connect_url":
-        connect_url = "https://panel.impossible-world.xyz/connect"
+        connect_url = "https://panel-production-fd16.up.railway.app/"
         await query.edit_message_text(
-            f"🔗 *Your Connect URL:*\n\n`{connect_url}`", parse_mode="Markdown"
+            f"🔗 *Your Connect URL:*\n\n`{connect_url}`\n\n*Premium Domain Connect URL Shifting To Another Hosting Please Today Use This 👇*", parse_mode="Markdown"
         )
 
     elif data == "access_keys":
