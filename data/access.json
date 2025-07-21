@@ -22,10 +22,19 @@
   },
   "MyBotAccess": {
     "devices": [
-      "1166083673",
-      "8167904992"
+      "8167904992",
+      "2113060567",
+      "7285840925",
+      "7715328535"
     ],
-    "max_devices": 10,
+    "max_devices": 50,
+    "expiry": "2025-07-23",
+    "blocked": false,
+    "owner": "8003357608"
+  },
+  "Ghjk": {
+    "devices": [],
+    "max_devices": 4,
     "expiry": "2025-07-21",
     "blocked": false,
     "owner": "8003357608"

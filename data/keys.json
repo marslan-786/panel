@@ -8,5 +8,53 @@
       "expiry": "2025-07-20 23:59:59",
       "blocked": false
     }
+  },
+  "2113060567": {
+    "QMWLZUBRSFQ5": {
+      "devices": [],
+      "max_devices": 5,
+      "expiry": "2025-07-23 23:59:59",
+      "blocked": false
+    }
+  },
+  "7285840925": {
+    "Access30Days": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-27",
+      "blocked": false
+    },
+    "MyBotAccess": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-27",
+      "blocked": false
+    },
+    "J8H0WPVRZARF": {
+      "devices": [],
+      "max_devices": 9999,
+      "expiry": "2025-08-19 23:59:59",
+      "blocked": false
+    },
+    "Access30lifetime": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-27",
+      "blocked": false
+    }
+  },
+  "7715328535": {
+    "4O6J0N41Q1XS": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-04 23:59:59",
+      "blocked": false
+    },
+    "Hkkey": {
+      "devices": [],
+      "max_devices": 7,
+      "expiry": "2025-07-28",
+      "blocked": false
+    }
   }
 }
