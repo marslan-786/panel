@@ -729,7 +729,7 @@ async def backup_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
 
     await context.bot.send_message(chat_id=chat_id, text="📁 Backup مکمل ہو گیا ✅ Please Again /start")
-    
+
 async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = context.user_data
     user_id = str(update.effective_user.id)
@@ -757,13 +757,13 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
                     parse_mode="Markdown"
                 )
                 await show_key_detail(update, context, key)
-                return  # ✅ Success case: stop further processing
+                return
             except:
                 await update.message.reply_text(
                     "⚠️ Please Again /start",
                     parse_mode="Markdown"
                 )
-                return  # ❌ Error case: stop further processing
+                return
         else:
             await update.message.reply_text("❌ Key not found.")
             return
@@ -858,14 +858,30 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("⚠️ Device limit reached for this access key.")
         return
     else:
+        # ✅ Save user to access key
         devices.append(user_id)
         key_data["devices"] = devices
-        # owner کو کبھی نہ بدلیں
-        # key_data["owner"] = user_id  <-- یہ لائن نکال دی گئی ہے
-
         access_data[text] = key_data
         save_access_keys(access_data)
+
+        # ✅ Notify user
         await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
+
+        # ✅ Notify owner
+        try:
+            username = update.effective_user.username or "N/A"
+            await context.bot.send_message(
+                chat_id=OWNER_ID,
+                text=(
+                    "🔔 *Access Key Used!*\n\n"
+                    f"👤 User ID: `{user_id}`\n"
+                    f"📛 Username: @{username}\n"
+                    f"🔑 Access Key: `{text}`"
+                ),
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            print(f"❌ Failed to notify owner: {e}")
         return
         
 
