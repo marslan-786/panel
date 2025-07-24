@@ -56,5 +56,47 @@
       "expiry": "2025-07-28",
       "blocked": false
     }
+  },
+  "7699725567": {
+    "V8ANKTR05PFH": {
+      "devices": [],
+      "max_devices": 9999,
+      "expiry": "2025-08-06 23:59:59",
+      "blocked": false
+    }
+  },
+  "1077619987": {
+    "NayMer31": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-29",
+      "blocked": false
+    }
+  },
+  "5742070446": {
+    "62SXB8TIQ1T0": {
+      "devices": [
+        "bed8dee8-cd8e-3ad4-bb8d-3d41686e0473"
+      ],
+      "max_devices": 3,
+      "expiry": "2025-07-26 23:59:59",
+      "blocked": false
+    },
+    "V43CAYITZDWN": {
+      "devices": [
+        "1fe57790-f542-3b52-a57b-4e4b6f2d3113"
+      ],
+      "max_devices": 2,
+      "expiry": "2025-07-26 23:59:59",
+      "blocked": false
+    },
+    "Taiktaik": {
+      "devices": [
+        "74d7ea35-8c6b-3b4e-b355-77f0cbfc0bcc"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-07-30",
+      "blocked": false
+    }
   }
 }
