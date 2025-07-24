@@ -157,6 +157,7 @@ def load_blocked_users():
             return []
     return []
 
+
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
     if request.method == "POST":
@@ -182,7 +183,6 @@ async def connect(request: Request):
     if owner_id != str(OWNER_ID):
         # ─── Check access.json ───
         access_ok = False
-        access_expired = False
         if os.path.exists(ACCESS_FILE):
             try:
                 with open(ACCESS_FILE, "r") as f:
@@ -193,16 +193,21 @@ async def connect(request: Request):
             for v in access_data.values():
                 if isinstance(v, dict) and "devices" in v:
                     if str(owner_id) in v["devices"]:
-                        # Check expiry date if exists
-                        if "expiry" in v:
-                            expiry_str = v["expiry"]
+                        # ─── Check access expiry ───
+                        access_expiry = v.get("expiry")
+                        if access_expiry:
                             try:
-                                expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S")
-                                if expiry_date < datetime.now():
-                                    access_expired = True
-                                    break
+                                expiry_dt = datetime.strptime(access_expiry, "%Y-%m-%d")
+                                if expiry_dt < datetime.now():
+                                    return JSONResponse({
+                                        "status": False,
+                                        "reason": "Your access key is expired. Please contact your admin."
+                                    }, status_code=403)
                             except:
-                                pass
+                                return JSONResponse({
+                                    "status": False,
+                                    "reason": "Invalid access expiry format."
+                                }, status_code=500)
                         access_ok = True
                         break
 
@@ -227,16 +232,9 @@ async def connect(request: Request):
                 "reason": "Your admin is blocked by the panel owner. Please contact your admin."
             }, status_code=403)
 
-        if access_expired:
-            return JSONResponse({
-                "status": False,
-                "reason": "Your access has expired. Please contact your admin."
-            }, status_code=403)
-
         if not access_ok:
             return JSONResponse({"status": False, "reason": "Access denied. Invalid user."}, status_code=403)
 
-    # Rest of your existing code...
     # ─── If key itself is blocked ───
     if key_data.get("blocked", False):
         return JSONResponse({"status": False, "reason": "Key is blocked"}, status_code=403)
