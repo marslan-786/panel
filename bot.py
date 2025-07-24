@@ -157,7 +157,6 @@ def load_blocked_users():
             return []
     return []
 
-
 @app.api_route("/connect", methods=["GET", "POST"])
 async def connect(request: Request):
     if request.method == "POST":
@@ -190,26 +189,32 @@ async def connect(request: Request):
             except:
                 access_data = {}
 
+            all_expired = True  # assume sab expired hain
+
             for v in access_data.values():
                 if isinstance(v, dict) and "devices" in v:
                     if str(owner_id) in v["devices"]:
-                        # ─── Check access expiry ───
                         access_expiry = v.get("expiry")
                         if access_expiry:
                             try:
                                 expiry_dt = datetime.strptime(access_expiry, "%Y-%m-%d")
-                                if expiry_dt < datetime.now():
-                                    return JSONResponse({
-                                        "status": False,
-                                        "reason": "Your access key is expired. Please contact your admin."
-                                    }, status_code=403)
+                                if expiry_dt >= datetime.now():
+                                    access_ok = True
+                                    all_expired = False
+                                    break
                             except:
-                                return JSONResponse({
-                                    "status": False,
-                                    "reason": "Invalid access expiry format."
-                                }, status_code=500)
-                        access_ok = True
-                        break
+                                continue
+                        else:
+                            # expiry nahi likhi, assume valid
+                            access_ok = True
+                            all_expired = False
+                            break
+
+            if not access_ok and all_expired:
+                return JSONResponse({
+                    "status": False,
+                    "reason": "Your access key is expired. Please contact your admin."
+                }, status_code=403)
 
         # ─── Check blocked_users.json ───
         is_blocked = False
