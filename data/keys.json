@@ -7,6 +7,46 @@
       "max_devices": 1,
       "expiry": "2025-07-20 23:59:59",
       "blocked": false
+    },
+    "CHZDVSZ6Y0ZD": {
+      "devices": [
+        "2a33abb7-c94b-3013-b4df-e9b2f88043ea"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-07-25 23:59:59",
+      "blocked": false
+    },
+    "T51ZDQDGJU5R": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    },
+    "GWSYWFMG8Y7N": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    },
+    "Q3DBJKD0ODNM": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    },
+    "B9H433MVPPZ6": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    },
+    "Myhack": {
+      "devices": [
+        "14c569e4-a6cc-3525-a189-7b280b95a508"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-08-08",
+      "blocked": false
     }
   },
   "2113060567": {
@@ -96,6 +136,216 @@
       ],
       "max_devices": 1,
       "expiry": "2025-07-30",
+      "blocked": false
+    },
+    "ANQFIB2TXAMG": {
+      "devices": [],
+      "max_devices": 3,
+      "expiry": "2025-07-31 23:59:59",
+      "blocked": false
+    },
+    "MYKEY123": {
+      "devices": [],
+      "max_devices": 2,
+      "expiry": "2025-07-31",
+      "blocked": false
+    },
+    "UnounoarsLoader": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02",
+      "blocked": false
+    },
+    "8N3EG1GCI88U": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-27 23:59:59",
+      "blocked": false
+    }
+  },
+  "2143758073": {
+    "HAX3R099": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-31",
+      "blocked": false
+    }
+  },
+  "5699004323": {
+    "HL50AX5Y7JY4": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-25 23:59:59",
+      "blocked": false
+    },
+    "DR6K0U88RPNN": {
+      "devices": [],
+      "max_devices": 3,
+      "expiry": "2025-08-04 23:59:59",
+      "blocked": false
+    }
+  },
+  "7167704900": {
+    "ZBXK9K266VEB": {
+      "devices": [],
+      "max_devices": 2,
+      "expiry": "2025-07-27 23:59:59",
+      "blocked": false
+    },
+    "VipMikeyPermKey": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-31",
+      "blocked": false
+    },
+    "EMPTY-VIP-MOD": {
+      "devices": [
+        "c55d2132-3bec-3681-8669-0b4769138428"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-08-01",
+      "blocked": false
+    },
+    "Panel-Access": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-17",
+      "blocked": false
+    }
+  },
+  "8013195289": {
+    "SY365D:DfgyJik": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-31",
+      "blocked": false
+    }
+  },
+  "8039725010": {
+    "Sj": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-31",
+      "blocked": false
+    }
+  },
+  "8100506206": {
+    "JC8TRYG4TSHN": {
+      "devices": [],
+      "max_devices": 2,
+      "expiry": "2025-07-28 23:59:59",
+      "blocked": false
+    }
+  },
+  "6947096279": {
+    "9RWCBH1KLAR3": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-26 23:59:59",
+      "blocked": false
+    }
+  },
+  "6299329980": {
+    "99DH6MFYKPSM": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-27 23:59:59",
+      "blocked": false
+    },
+    "TENZAPK-7D-2V": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02",
+      "blocked": false
+    }
+  },
+  "8169059406": {
+    "WXIYHFAUK0H7": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-07-28 23:59:59",
+      "blocked": false
+    }
+  },
+  "6245624616": {},
+  "8170921465": {
+    "S6FAAMOR23PC": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    }
+  },
+  "7967732574": {
+    "KINGRUNME": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-08",
+      "blocked": false
+    },
+    "2B0BXKR76M6D": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-31 23:59:59",
+      "blocked": false
+    }
+  },
+  "6152029368": {
+    "Mrzain": {
+      "devices": [],
+      "max_devices": 9999,
+      "expiry": "4763-06-28",
+      "blocked": false
+    }
+  },
+  "7283718882": {
+    "L5TE34CEVNDG": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-02 23:59:59",
+      "blocked": false
+    }
+  },
+  "6024531620": {
+    "M186788": {
+      "devices": [],
+      "max_devices": 1,
+      "expiry": "2025-08-08",
+      "blocked": false
+    }
+  },
+  "7714721869": {},
+  "8003357608": {
+    "EOQY39T80S56": {
+      "devices": [
+        "0270dd61-669e-3a51-b6ab-e022bb6d8300"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-08-05 23:59:59",
+      "blocked": true
+    },
+    "PZT0SZHR8DAV": {
+      "devices": [
+        "4e2a3c5e-2457-3ec3-af05-44edf4a09801"
+      ],
+      "max_devices": 1,
+      "expiry": "2025-08-06 23:59:59",
+      "blocked": true
+    }
+  },
+  "1511054763": {
+    "MOHAB": {
+      "devices": [],
+      "max_devices": 100,
+      "expiry": "2025-09-05",
+      "blocked": false
+    }
+  },
+  "5994509486": {
+    "C3VLFJQI3NZV": {
+      "devices": [],
+      "max_devices": 2,
+      "expiry": "2025-08-08 23:59:59",
       "blocked": false
     }
   }

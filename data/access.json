@@ -1,62 +1,50 @@
 {
-  "Impossible": {
-    "devices": [],
-    "max_devices": 1,
-    "expiry": "2025-07-22",
-    "blocked": false,
-    "owner": "8003357608"
-  },
-  "A1HAX": {
-    "devices": [],
-    "max_devices": 5,
-    "expiry": "2025-07-22",
-    "blocked": false,
-    "owner": "8003357608"
-  },
-  "X7RM45MZC9JO": {
-    "devices": [],
-    "max_devices": 1,
-    "expiry": "2025-07-20",
-    "blocked": false,
-    "owner": "8003357608"
-  },
-  "MyBotAccess": {
+  "Panel-bot": {
     "devices": [
-      "8167904992",
-      "2113060567",
-      "7285840925",
-      "7715328535",
-      "7699725567",
-      "8040512430",
-      "6836635127",
-      "1077619987",
-      "5742070446"
+      "7098644129",
+      "8170921465",
+      "5699004323",
+      "7967732574",
+      "6152029368",
+      "7283718882",
+      "6086282402",
+      "6536427285",
+      "5994509486",
+      "6570176476"
     ],
-    "max_devices": 50,
-    "expiry": "2025-07-23",
+    "max_devices": 10,
+    "expiry": "2025-08-04",
     "blocked": false,
     "owner": "8003357608"
   },
-  "Ghjk": {
-    "devices": [],
-    "max_devices": 4,
-    "expiry": "2025-07-21",
+  "Panel-Access": {
+    "devices": [
+      "8170921465",
+      "6299329980",
+      "6024531620",
+      "7714721869",
+      "1511054763"
+    ],
+    "max_devices": 20,
+    "expiry": "2025-08-04",
     "blocked": false,
     "owner": "8003357608"
   },
-  "3637IYTEPEA9": {
+  "3BX23120EYQ7": {
     "devices": [
       "8167904992"
     ],
-    "max_devices": 1,
-    "expiry": "2025-07-22",
+    "max_devices": 5,
+    "expiry": "2025-08-08",
     "blocked": false,
     "owner": "8003357608"
   },
-  "access": {
-    "devices": [],
+  "LostAdi": {
+    "devices": [
+      "6082509783"
+    ],
     "max_devices": 1,
-    "expiry": "2025-07-25",
+    "expiry": "2025-08-08",
     "blocked": false,
     "owner": "8003357608"
   }
