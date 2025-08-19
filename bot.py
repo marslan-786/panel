@@ -3,7 +3,6 @@ import os
 import json
 import random
 import hashlib
-import traceback
 from datetime import datetime, timedelta
 from telegram.helpers import escape_markdown
 import asyncio
@@ -37,7 +36,7 @@ DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 OWNER_IDS = [8003357608, 8019937317]  # یہاں سب owner IDs رکھیں
 OWNER_USERNAMES = ["@only_possible", "@PubgQueen77"]
-OWNER_USERNAME = "@PubgQueen77"
+PRIMARY_OWNER_ID = OWNER_IDS[0]  # For sending notifications and owner-only commands
 ACCESS_FILE = "data/access.json"
 BLOCKED_USERS_FILE = "data/blocked_users.json"
 
@@ -90,7 +89,7 @@ def delete_user_data(user_id):
     save_access_keys(access_data)
 
     # Unblock if exists
-    unblock_user(user_id)
+    unblock_user_by_id(user_id)
     
 def load_json(file_path):
     try:
@@ -179,8 +178,8 @@ async def connect(request: Request):
     if not key_data or not owner_id:
         return JSONResponse({"status": False, "reason": "Invalid or expired key"}, status_code=403)
 
-    # ─── Skip checks if owner is OWNER_ID ───
-    if owner_id != str(OWNER_ID):
+    # ─── Skip checks if owner is in OWNER_IDS list ───
+    if int(owner_id) not in OWNER_IDS:
         # ─── Check access.json ───
         access_ok = False
         if os.path.exists(ACCESS_FILE):
@@ -314,7 +313,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "To appeal or request unblocking, please contact the owner below 👇"
         )
         keyboard = [
-            [InlineKeyboardButton("📞 Contact Owner", url=f"https://t.me/PubgQueen77")]
+            [InlineKeyboardButton("📞 Contact Owner", url=f"https://t.me/{OWNER_USERNAMES[0].lstrip('@')}")]
         ]
 
     # ✅ Step 2: اگر user allowed ہے (devices میں شامل ہے یا وہ owner ہے)
@@ -323,14 +322,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎉 *Welcome to Queen 👑 Panel!*😍\n\n"
             "✨ *You are a Premium Member!* 🥰\n"
             "🟢 Your membership is *Successfully activated* ✅.\n\n"
-            f"👑 *Owner:* [{OWNER_USERNAME}](https://t.me/{OWNER_USERNAME.lstrip('@')})\n\n"
+            f"👑 *Owner:* [{OWNER_USERNAMES[0]}](https://t.me/{OWNER_USERNAMES[0].lstrip('@')})\n\n"
             "💡 To use the panel features, simply click the buttons below 👇"
         )
         keyboard = [
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")],
-            [InlineKeyboardButton("👑 Owner", url=f"https://t.me/PubgQueen77")]
+            [InlineKeyboardButton("👑 Owner", url=f"https://t.me/{OWNER_USERNAMES[0].lstrip('@')}")]
         ]
         if is_owner:
             keyboard.extend([
@@ -347,7 +346,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎫 To get access, buy a key from 👇"
         )
         keyboard = [
-            [InlineKeyboardButton("🛒 Buy Access Key", url=f"https://t.me/{OWNER_USERNAME.lstrip('@')}")]
+            [InlineKeyboardButton("🛒 Buy Access Key", url=f"https://t.me/{OWNER_USERNAMES[0].lstrip('@')}")]
         ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -594,8 +593,7 @@ async def show_access_key_detail(query, context, key):
 
     except Exception as e:
         print("⚠️ Error in show_access_key_detail():")
-        import traceback
-        traceback.print_exc()
+        print(e)
         await query.answer("❌ Error displaying details!")
     
 async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -647,7 +645,7 @@ async def show_my_access_keys(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def unblock_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
+    if update.effective_user.id not in OWNER_IDS:
         await update.message.reply_text("❌ Only the owner can use this command!")
         return
 
@@ -656,11 +654,11 @@ async def unblock_user_command(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     user_id = context.args[0]
-    unblock_user(user_id)
+    unblock_user_by_id(user_id)
     await update.message.reply_text(f"✅ User `{user_id}` has been unblocked.", parse_mode="Markdown")
     
 async def block_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
+    if update.effective_user.id not in OWNER_IDS:
         await update.message.reply_text("❌ Only the owner can use this command!")
         return
 
@@ -674,7 +672,7 @@ async def block_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def delete_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
+    if update.effective_user.id not in OWNER_IDS:
         await update.message.reply_text("❌ Only the owner can use this command!")
         return
 
@@ -887,14 +885,11 @@ async def handle_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE
         access_data[text] = key_data
         save_access_keys(access_data)
 
-        # ✅ Notify user
-        await update.message.reply_text("✅ Access granted! You can now use the panel. Use /start again.")
-
         # ✅ Notify owner
         try:
             username = update.effective_user.username or "N/A"
             await context.bot.send_message(
-                chat_id=OWNER_ID,
+                chat_id=PRIMARY_OWNER_ID,
                 text=(
                     "🔔 *Access Key Used!*\n\n"
                     f"👤 User ID: `{user_id}`\n"
@@ -928,7 +923,7 @@ async def send(update: Update, context: ContextTypes.DEFAULT_TYPE):
             allowed = True
             target_devices.extend(entry.get("devices", []))
 
-    if not allowed:
+    if not allowed and user_id not in [str(o) for o in OWNER_IDS]:
         await update.message.reply_text("⛔️ You are not authorized to use /send.")
         return
 
@@ -1028,7 +1023,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "back_main":
         user_id = str(query.from_user.id)
-        is_owner = query.from_user.id == OWNER_ID
+        is_owner = query.from_user.id in OWNER_IDS
         access_keys = load_access_keys()
 
         allowed = any(
@@ -1040,7 +1035,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎉 *Welcome to Queen 👑 Panel!*😍\n\n"
             "✨ *You are a Premium Member!* 🥰\n"
             "🟢 Your membership is *Successfully activated* ✅.\n\n"
-            "👑 *Owner:* @Only_Possible\n\n"
+            f"👑 *Owner:* @Only_Possible\n\n"
             "💡 To use the panel features, simply click the buttons below 👇"
         )
         text = escape_markdown(text, version=2)
@@ -1048,7 +1043,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")],
-            [InlineKeyboardButton("👑 Owner", url="https://t.me/Only_Possible")]
+            [InlineKeyboardButton("👑 Owner", url=f"https://t.me/{OWNER_USERNAMES[0].lstrip('@')}")]
         ]
 
         if is_owner:
@@ -1071,7 +1066,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "access_keys":
-        if query.from_user.id != OWNER_ID:
+        if query.from_user.id not in OWNER_IDS:
             await query.answer("❌ Only owner can access this!", show_alert=True)
             return
         await show_access_key_menu(query, context)
@@ -1085,7 +1080,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("access_toggle_"):
         try:
-            key = data[len("access_toggle_"):]
+            key = data.replace("access_toggle_", "", 1)
             access_data = load_access_keys()
             blocked_data = load_json(BLOCKED_USERS_FILE)
 
@@ -1110,8 +1105,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await query.answer("❌ Error occurred!")
             print(f"⚠️ Error in access_toggle_: {e}")
-            import traceback
-            traceback.print_exc()
 
     elif data.startswith("access_delete_"):
         try:
@@ -1129,7 +1122,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 remaining = any(str(info.get("owner")) == user_id for info in access_data.values())
                 if not remaining:
-                    unblock_user(user_id)
+                    unblock_user_by_id(user_id)
 
                 await query.answer("🗑️ Deleted")
                 await show_my_access_keys(update, context)
@@ -1138,7 +1131,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await query.answer("❌ Error occurred!")
             print("⚠️ Error in access_delete_:")
-            traceback.print_exc()
 
     elif data == "access_cycle_device":
         user_data["access_device_index"] = (user_data.get("access_device_index", 0) + 1) % len(ACCESS_DEVICE_OPTIONS)
@@ -1187,4 +1179,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
