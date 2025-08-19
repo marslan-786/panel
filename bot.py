@@ -313,13 +313,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "To appeal or request unblocking, please contact the owner below 👇"
         )
         keyboard = [
-            [InlineKeyboardButton("📞 Contact Owner", url=f"https://t.me/{OWNER_USERNAME.lstrip('@')}")]
+            [InlineKeyboardButton("📞 Contact Owner", url=f"https://t.me/PubgQueen77")]
         ]
 
     # ✅ Step 2: اگر user allowed ہے (devices میں شامل ہے یا وہ owner ہے)
     elif any(user_id in v.get("devices", []) and not v.get("blocked", False) for v in access_keys.values()) or is_owner:
         text = (
-            "🎉 *Welcome to Impossible Panel!*😍\n\n"
+            "🎉 *Welcome to Queen 👑 Panel!*😍\n\n"
             "✨ *You are a Premium Member!* 🥰\n"
             "🟢 Your membership is *Successfully activated* ✅.\n\n"
             f"👑 *Owner:* [{OWNER_USERNAME}](https://t.me/{OWNER_USERNAME.lstrip('@')})\n\n"
@@ -329,7 +329,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔐 Generate Key", callback_data="generate_key")],
             [InlineKeyboardButton("📂 My Keys", callback_data="my_keys")],
             [InlineKeyboardButton("🔌 Connect URL", callback_data="connect_url")],
-            [InlineKeyboardButton("👑 Owner", url=f"https://t.me/{OWNER_USERNAME.lstrip('@')}")]
+            [InlineKeyboardButton("👑 Owner", url=f"https://t.me/PubgQueen77")]
         ]
         if is_owner:
             keyboard.extend([
@@ -341,7 +341,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ Step 3: اگر user new ہے (na devices میں, na blocked میں)
     else:
         text = (
-            "🔐 *Welcome to Impossible Panel!*\n\n"
+            "🔐 *Welcome to Queen 👑 Panel!*\n\n"
             "🚫 You are not authorized yet.\n"
             "🎫 To get access, buy a key from 👇"
         )
@@ -1036,7 +1036,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         text = (
-            "🎉 *Welcome to Impossible Panel!*😍\n\n"
+            "🎉 *Welcome to Queen 👑 Panel!*😍\n\n"
             "✨ *You are a Premium Member!* 🥰\n"
             "🟢 Your membership is *Successfully activated* ✅.\n\n"
             "👑 *Owner:* @Only_Possible\n\n"
