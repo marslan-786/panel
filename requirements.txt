@@ -1,4 +1,5 @@
 fastapi
 uvicorn
+flask
 python-multipart
 python-telegram-bot==20.3
