@@ -35,7 +35,7 @@ app = FastAPI()
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 OWNER_IDS = [8167904992, 8019937317]  # یہاں سب owner IDs رکھیں
-OWNER_USERNAMES = ["@only_possible", "@PubgQueen77"]
+OWNER_USERNAMES = ["@PubgQueen77", "@only_possible"]
 PRIMARY_OWNER_ID = OWNER_IDS[0]  # For sending notifications and owner-only commands
 ACCESS_FILE = "data/access.json"
 BLOCKED_USERS_FILE = "data/blocked_users.json"
@@ -1035,7 +1035,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎉 *Welcome to Queen 👑 Panel!*😍\n\n"
             "✨ *You are a Premium Member!* 🥰\n"
             "🟢 Your membership is *Successfully activated* ✅.\n\n"
-            f"👑 *Owner:* @Only_Possible\n\n"
+            f"👑 *Owner:* @PubgQueen77\n\n"
             "💡 To use the panel features, simply click the buttons below 👇"
         )
         text = escape_markdown(text, version=2)
