@@ -34,7 +34,7 @@ app = FastAPI()
 # ─────🗂️ Configs ─────
 DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
-OWNER_IDS = [8003357608, 8019937317]  # یہاں سب owner IDs رکھیں
+OWNER_IDS = [8167904992, 8019937317]  # یہاں سب owner IDs رکھیں
 OWNER_USERNAMES = ["@only_possible", "@PubgQueen77"]
 PRIMARY_OWNER_ID = OWNER_IDS[0]  # For sending notifications and owner-only commands
 ACCESS_FILE = "data/access.json"
