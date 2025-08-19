@@ -37,6 +37,7 @@ DATA_FILE = "data/keys.json"
 SECRET_KEY = "Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E"
 OWNER_IDS = [8003357608, 8019937317]  # یہاں سب owner IDs رکھیں
 OWNER_USERNAMES = ["@only_possible", "@PubgQueen77"]
+OWNER_USERNAME = "@PubgQueen77"
 ACCESS_FILE = "data/access.json"
 BLOCKED_USERS_FILE = "data/blocked_users.json"
 
